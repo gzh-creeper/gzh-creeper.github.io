@@ -1,0 +1,203 @@
+<!--
+                         TTTTTTTTTT                  TTTTTTT
+                      TTTTTTTTTTTTTTTT            TTTTTTTTTTTT
+                      TTTTTTTTTTTTTTTT            TTTTTTTTTTTT
+                      TTTTTTTTTTTTTTTT            TTTTTTTTTTTT
+                      TTTTTTTTTTTTTTTT            TTTTTTTTTTTT
+                      TTTTTTTTTTTTTTTT            TTTTTTTTTTTTTT
+                         TTTTTTTTTTTT               TTTTTTTTTTTT
+                               TTTTTTTTT                     TTTTTTT
+                               TTTTTTTTTTTT                  TTTTTTT
+                                     TTTTTTT                     TTTT
+                                     TTTTTTT                     TTTT
+                                        TTTT                     TTTT
+                                        TTTT               TTTTTTTTTTTTTTTTTT
+                                     TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+                                     TTTTTTTTTTTTTTTTTTTTTTTTTT            TTTTTTT
+                      TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT            TTTTTTT        TTTTTTTTTT
+                      TTTTTTTTTTTTTTTTTTTT                                     TTTT        TTTTTTTTTT
+         TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT                                     TTTT  TTTTTTTTTTTTTTTT
+         TTTTTTTTTTTTTTTTTT                                                    TTTT  TTTTTTTTT   TTT
+      TTTTTTT                               TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT         TTT
+   TTTTTTTTTT                     TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT      TTTTTT
+   TTTTTTT                        TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT            TTTTTT
+   TTTTTTT                     TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT        TTTTTTTTTT
+   TTTT                        TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT              TTTTTTT
+   TTTT                     TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT            TTTTTTTTTT
+   TTTT                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT               TTTTTTTTTT
+   TTTT                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT                     TTTTTTT
+   TTTT                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT                  TTTTTTTTTT
+   TTTT                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT                        TTTTTTT
+   TTTT                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT                     TTTTTTTTTT
+   TTTT                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT                        TTTTTTT
+   TTTT                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT                     TTTTTTTTTT
+   TTTT                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT         TTTTTTTTTTTTTTTTTTT
+   TTTT                  TTTTTTTTTTTT         TTTTTTTTTT        TTTTTTTTTTTTTTTTTTTT
+   TTTT                  TTTTTTTTTTTTTT   TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+   TTTT                  TTTTTTTTTTTTTT   TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+   TTTTTTT               TTTTTTTTTTTTTT   TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+   TTTTTTT                  TTTTTTTTTT      TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  TTTTTTTTTT
+      TTTT                     TTTTTTTTTT                                     TTTTTTT
+      TTTTTTT                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT   TTTTTTTTTTTT
+      TTTTTTT                     TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT   TTTTTTTTTTTT
+      TTTTTTTTTT                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+         TTTTTTT                     TTTTTTTTTTTTTTTTTTTTTT            TTTTTTTTTTTTTTTTTTT
+            TTTTTTT                     TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT     TTTT
+            TTTTTTTTTTTT               TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT     TTTT
+               TTTTTTTTT                     TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT        TTTT
+               TTTTTTTTTTTTTT               TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT        TTTT
+                      TTTTTTTTTT                                                       TTTT
+                      TTTTTTTTTTTTTT                                              TTTTTTT
+                            TTTTTTTTTT                                              TTTTTTT
+                                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+                                  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#002015">
+    <meta property="og:title" content="Green Sign Generator">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://green.tennaproject.com/">
+    <meta property="og:image" content="assets/banner.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="628">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="assets/banner.png">
+    <title>Green Sign Generator</title>
+    <link rel="canonical" href="https://green.tennaproject.com/">
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main class="app">
+      <section class="control-panel">
+        <div class="label-row">
+          <label for="sign-text">Sign text</label>
+          <div class="label-row-controls">
+            <div class="segmented" role="group" aria-label="Character side">
+              <button id="side-left-button" class="segmented-button" type="button" aria-pressed="false">Left</button>
+              <button id="side-right-button" class="segmented-button" type="button" aria-pressed="true">Right</button>
+            </div>
+            <div class="segmented" role="group" aria-label="Character mood">
+              <button id="mood-happy-button" class="segmented-button" type="button" aria-pressed="true">Happy</button>
+              <button id="mood-sad-button" class="segmented-button" type="button" aria-pressed="false">Sad</button>
+            </div>
+            <select id="sign-font" class="font-select" aria-label="Sign font">
+              <optgroup label="Bundled">
+                <option value="green-sans" selected>Green Sans</option>
+                <option value="departure-mono">Departure Mono</option>
+                <option value="pixel-operator">Pixel Operator</option>
+              </optgroup>
+              <optgroup id="system-font-group" label="System"></optgroup>
+            </select>
+          </div>
+          <span id="character-count">12 characters</span>
+        </div>
+        <textarea id="sign-text">Write something green...</textarea>
+        <div class="compact-actions">
+          <label class="pixel-export-option" for="pixel-export">
+            <input id="pixel-export" type="checkbox">
+            <span>Native pixel PNG</span>
+          </label>
+          <button id="reset-button" class="toolbar-button">
+            <span>Reset</span>
+          </button>
+          <button id="copy-button" class="toolbar-button">
+            <span>Copy</span>
+          </button>
+          <button id="download-button" class="toolbar-button toolbar-button-primary">
+            <span>Download</span>
+          </button>
+        </div>
+      </section>
+      <section class="preview-panel">
+        <div class="preview-stage">
+          <div id="preview-fit" class="preview-fit">
+            <div id="sprite-scene" class="sprite-scene" data-character-side="right">
+              <article id="sign" class="sign">
+                <canvas id="sign-canvas" class="sign-canvas"></canvas>
+                <p id="sign-copy" class="sign-copy"></p>
+              </article>
+              <img
+                id="character-sprite"
+                class="character-sprite"
+                src="assets/green.svg"
+                width="44"
+                height="47"
+                draggable="false"
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <div>
+        <a href="https://github.com/tennaproject" target="_blank" rel="noreferrer">
+          <img src="assets/tenna-project-logo.svg" alt="">
+          <span>A Tenna Project tool</span>
+        </a>
+        <p>
+          Made by <a href="https://github.com/jjezewski" target="_blank" rel="noreferrer">@jjezewski</a>
+          <span class="separator"></span>
+          <a href="https://github.com/tennaproject/green" target="_blank" rel="noreferrer">View source on GitHub</a>
+          <span class="separator"></span>
+          Green’s Font created by No_Night_6600 and BeepsNBoops
+        </p>
+        <p>
+          Fan project, not affiliated with or endorsed by Toby Fox. DELTARUNE™ is a trademark of Royal Sciences, LLC.
+        </p>
+      </div>
+    </footer>
+
+<script>
+// 读取URL参数：#/文字/朝向/表情
+// 支持 \n 换行，支持中文
+function applyHashParams(){
+  const hash = location.hash;
+  if(!hash.startsWith("#/")) return;
+  
+  // 拆分参数：#/文字/朝向/表情
+  const rawParts = hash.slice(2).split('/');
+  const parts = rawParts.map(decodeURIComponent);
+  
+  // 文字部分：把字面量 \n 替换成真正的换行符
+  const text = (parts[0] || '').replace(/\\n/g, '\n');
+  const side = parts[1]; // left / right
+  const mood = parts[2]; // happy / sad
+
+  // 设置文字并触发渲染
+  const textarea = document.getElementById('sign-text');
+  if(text){
+    textarea.value = text;
+    textarea.dispatchEvent(new Event('input'));
+  }
+
+  // 设置朝向
+  if(side === 'left' || side === 'right'){
+    const btn = side === 'left' 
+      ? document.getElementById('side-left-button') 
+      : document.getElementById('side-right-button');
+    btn.click();
+  }
+
+  // 设置表情
+  if(mood === 'happy' || mood === 'sad'){
+    const btn = mood === 'happy' 
+      ? document.getElementById('mood-happy-button') 
+      : document.getElementById('mood-sad-button');
+    btn.click();
+  }
+}
+
+window.addEventListener('load', applyHashParams);
+window.addEventListener('hashchange', applyHashParams);
+</script>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
