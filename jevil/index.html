@@ -440,7 +440,7 @@
         const dx = b.tx - b.x;
         const dy = b.ty - b.y;
         const angle = Math.atan2(dy, dx);
-        ctx.rotate(angle + Math.PI);
+        ctx.rotate(angle + Math.PI / 2);
       }
 
       const s = b.exploded ? b.scale : 1; ctx.scale(s, s);
