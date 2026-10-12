@@ -77,34 +77,35 @@
   const ctx = canvas.getContext('2d');
 
   // ================================================================
-  // ⚠️ 配置区：
-  // 1. 请确保使用本地服务器运行（Live Server 或 python -m http.server），
-  //    否则浏览器会阻止读取像素，紫色背景无法去除。
-  // 2. 炸弹贴图分为黑底和白底两个版本，请按实际文件名修改。
+  // ⚠️ 配置区：贴图文件路径
+  // 请确保使用本地服务器运行（Live Server 或 python -m http.server）
   // ================================================================
   
+  // 灵魂贴图
+  const SOUL_FILE = 'assets/soul.png';
+
   // 炸弹黑底贴图
   const BOMB_BLACK_FILES = {
-    club:    'assets/1.png',   // 梅花
-    diamond: 'assets/2.png',   // 方片
-    heart:   'assets/3.png',   // 红心
-    spade:   'assets/4.png'    // 黑桃
+    club:    'assets/1.png',
+    diamond: 'assets/2.png',
+    heart:   'assets/3.png',
+    spade:   'assets/4.png'
   };
 
   // 炸弹白底贴图
   const BOMB_WHITE_FILES = {
-    club:    'assets/5.png',   // 梅花
-    diamond: 'assets/6.png',   // 方片
-    heart:   'assets/7.png',   // 红心
-    spade:   'assets/8.png'    // 黑桃
+    club:    'assets/5.png',
+    diamond: 'assets/6.png',
+    heart:   'assets/7.png',
+    spade:   'assets/8.png'
   };
 
-  // 子弹贴图（9~12.png）
+  // 子弹贴图
   const BULLET_FILES = {
-    heart:   'assets/9.png',   // 红心
-    spade:   'assets/10.png',  // 黑桃
-    club:    'assets/11.png',  // 梅花
-    diamond: 'assets/12.png'   // 方片
+    heart:   'assets/9.png',
+    spade:   'assets/10.png',
+    club:    'assets/11.png',
+    diamond: 'assets/12.png'
   };
 
   // ---------- 动态去除紫色背景 ----------
@@ -120,7 +121,6 @@
       const data = imageData.data;
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i], g = data[i + 1], b = data[i + 2];
-        // 检测紫色/洋红色 (R高, G低, B高)
         if (r > 150 && g < 100 && b > 150) data[i + 3] = 0;
       }
       cx.putImageData(imageData, 0, 0);
@@ -135,14 +135,24 @@
   const bulletImages = {};
   const bombBlackImages = {};
   const bombWhiteImages = {};
+  let soulImage = null;
 
   function loadAssets(callback) {
-    let total = Object.keys(BULLET_FILES).length + Object.keys(BOMB_BLACK_FILES).length + Object.keys(BOMB_WHITE_FILES).length;
+    let total = Object.keys(BULLET_FILES).length 
+              + Object.keys(BOMB_BLACK_FILES).length 
+              + Object.keys(BOMB_WHITE_FILES).length 
+              + 1; // +1 为 soul.png
     let loaded = 0;
     const checkDone = () => {
       loaded++;
       if (loaded === total && callback) callback();
     };
+
+    // 加载灵魂
+    const soulImg = new Image();
+    soulImg.onload = () => { soulImage = removePurpleBackground(soulImg); checkDone(); };
+    soulImg.onerror = () => { console.warn(`无法加载灵魂贴图: ${SOUL_FILE}`); checkDone(); };
+    soulImg.src = SOUL_FILE;
 
     // 加载子弹
     Object.keys(BULLET_FILES).forEach(suit => {
@@ -351,7 +361,7 @@
         }
       } else {
         bu.x += bu.vx; bu.y += bu.vy;
-        bu.rotation = Math.atan2(bu.vy, bu.vx); // 朝向锁定为运动方向
+        bu.rotation = Math.atan2(bu.vy, bu.vx);
       }
 
       bu.life--;
@@ -412,7 +422,7 @@
     }
     ctx.globalAlpha = 1;
 
-    // 判断当前显示黑白贴图状态（每 30 帧 ≈ 0.5 秒切换一次）
+    // 黑白闪烁状态
     const isWhitePhase = Math.floor(time / 30) % 2 === 0;
     const currentBombImages = isWhitePhase ? bombWhiteImages : bombBlackImages;
 
@@ -422,21 +432,18 @@
       const s = b.exploded ? b.scale : 1; ctx.scale(s, s);
       
       if (!b.exploded) {
-        // 未爆炸：使用贴图
         const img = currentBombImages[b.suit];
         if (img) {
-          const dw = 32; // 调整贴图在游戏里的显示大小
-          const dh = 32;
+          const dw = 32, dh = 32;
           ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
         } else {
-          // 贴图未加载完成时的备用绘制
+          // 贴图未加载时的备用绘制
           ctx.fillStyle = '#1a1a2e'; ctx.strokeStyle = SUIT_COLORS[b.suit]; ctx.lineWidth = 2.5;
           ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
           ctx.fillStyle = SUIT_COLORS[b.suit]; ctx.font = 'bold 16px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText(SUIT_SYMBOLS[b.suit], 0, 1);
         }
       } else {
-        // 已爆炸：显示彩色爆炸光环
         const alpha = Math.max(0, 1 - b.explodeTimer / 14);
         ctx.globalAlpha = alpha * 0.7;
         const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 45);
@@ -451,10 +458,7 @@
     for (const bu of bullets) {
       ctx.save();
       ctx.translate(bu.x, bu.y);
-
-      if (bu.type !== 'heart') {
-        ctx.rotate(bu.rotation);
-      }
+      if (bu.type !== 'heart') ctx.rotate(bu.rotation);
 
       const col = SUIT_COLORS[bu.suit];
       ctx.shadowColor = col; ctx.shadowBlur = 10;
@@ -473,19 +477,32 @@
       ctx.restore();
     }
 
-    // 灵魂
+    // ---------- 绘制灵魂（使用 soul.png） ----------
     if (state === 'playing' || state === 'start') {
+      // 无敌帧闪烁逻辑（保留）
       const alpha = invincible > 0 && Math.floor(invincible / 4) % 2 === 0 ? 0.3 : 1;
       ctx.globalAlpha = alpha;
-      ctx.save(); ctx.translate(soul.x, soul.y);
-      ctx.shadowColor = '#ff3355'; ctx.shadowBlur = 18; ctx.fillStyle = '#ff3355';
-      ctx.beginPath(); const s = soul.r;
-      ctx.moveTo(0, s * 0.4);
-      ctx.bezierCurveTo(-s * 1.4, -s * 0.6, -s * 0.5, -s * 1.4, 0, -s * 0.5);
-      ctx.bezierCurveTo(s * 0.5, -s * 1.4, s * 1.4, -s * 0.6, 0, s * 0.4);
-      ctx.fill();
-      ctx.shadowBlur = 0; ctx.fillStyle = '#ff8899'; ctx.beginPath(); ctx.arc(-2, -3, 2, 0, Math.PI * 2); ctx.fill();
-      ctx.restore(); ctx.globalAlpha = 1;
+
+      ctx.save();
+      ctx.translate(soul.x, soul.y);
+
+      if (soulImage) {
+        // 使用 soul.png 贴图
+        const dw = soul.r * 3.2; // 可根据实际贴图比例微调
+        const dh = soul.r * 3.2;
+        ctx.drawImage(soulImage, -dw / 2, -dh / 2, dw, dh);
+      } else {
+        // 贴图未加载完成时，回退到原手绘红心
+        ctx.shadowColor = '#ff3355'; ctx.shadowBlur = 18; ctx.fillStyle = '#ff3355';
+        ctx.beginPath(); const s = soul.r;
+        ctx.moveTo(0, s * 0.4);
+        ctx.bezierCurveTo(-s * 1.4, -s * 0.6, -s * 0.5, -s * 1.4, 0, -s * 0.5);
+        ctx.bezierCurveTo(s * 0.5, -s * 1.4, s * 1.4, -s * 0.6, 0, s * 0.4);
+        ctx.fill();
+        ctx.shadowBlur = 0; ctx.fillStyle = '#ff8899'; ctx.beginPath(); ctx.arc(-2, -3, 2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
     }
 
     // UI 文字
