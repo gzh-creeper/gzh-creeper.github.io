@@ -65,7 +65,8 @@
     <div class="sub">混 沌 炸 弹</div>
     <div class="hint">
       <span>方向键 / WASD</span> 移动灵魂<br>
-      躲避所有花色炸弹，存活下来
+      躲避所有花色炸弹，存活下来<br>
+      <span>F 键</span> 回满血量
     </div>
     <div class="blink">按任意键开始</div>
   </div>
@@ -80,11 +81,8 @@
   // ⚠️ 配置区：贴图文件路径
   // 请确保使用本地服务器运行（Live Server 或 python -m http.server）
   // ================================================================
-  
-  // 灵魂贴图
   const SOUL_FILE = 'assets/soul.png';
 
-  // 炸弹黑底贴图
   const BOMB_BLACK_FILES = {
     club:    'assets/1.png',
     diamond: 'assets/2.png',
@@ -92,7 +90,6 @@
     spade:   'assets/4.png'
   };
 
-  // 炸弹白底贴图
   const BOMB_WHITE_FILES = {
     club:    'assets/5.png',
     diamond: 'assets/6.png',
@@ -100,7 +97,6 @@
     spade:   'assets/8.png'
   };
 
-  // 子弹贴图
   const BULLET_FILES = {
     heart:   'assets/9.png',
     spade:   'assets/10.png',
@@ -141,20 +137,18 @@
     let total = Object.keys(BULLET_FILES).length 
               + Object.keys(BOMB_BLACK_FILES).length 
               + Object.keys(BOMB_WHITE_FILES).length 
-              + 1; // +1 为 soul.png
+              + 1;
     let loaded = 0;
     const checkDone = () => {
       loaded++;
       if (loaded === total && callback) callback();
     };
 
-    // 加载灵魂
     const soulImg = new Image();
     soulImg.onload = () => { soulImage = removePurpleBackground(soulImg); checkDone(); };
     soulImg.onerror = () => { console.warn(`无法加载灵魂贴图: ${SOUL_FILE}`); checkDone(); };
     soulImg.src = SOUL_FILE;
 
-    // 加载子弹
     Object.keys(BULLET_FILES).forEach(suit => {
       const img = new Image();
       img.onload = () => { bulletImages[suit] = removePurpleBackground(img); checkDone(); };
@@ -162,7 +156,6 @@
       img.src = BULLET_FILES[suit];
     });
 
-    // 加载炸弹黑底
     Object.keys(BOMB_BLACK_FILES).forEach(suit => {
       const img = new Image();
       img.onload = () => { bombBlackImages[suit] = removePurpleBackground(img); checkDone(); };
@@ -170,7 +163,6 @@
       img.src = BOMB_BLACK_FILES[suit];
     });
 
-    // 加载炸弹白底
     Object.keys(BOMB_WHITE_FILES).forEach(suit => {
       const img = new Image();
       img.onload = () => { bombWhiteImages[suit] = removePurpleBackground(img); checkDone(); };
@@ -209,10 +201,23 @@
 
   // ---------- 输入 ----------
   window.addEventListener('keydown', e => {
-    keys[e.key.toLowerCase()] = true;
+    const key = e.key.toLowerCase();
+    keys[key] = true;
+
     if (state === 'start') { startGame(); return; }
-    if (state === 'gameover' && e.key.toLowerCase() === 'r') { startGame(); }
-    if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) e.preventDefault();
+    if (state === 'gameover' && key === 'r') { startGame(); return; }
+
+    // ---------- F 键回满血 ----------
+    if (state === 'playing' && key === 'f') {
+      hp = maxHp;
+      updateHpUI();
+      // 视觉反馈：短暂绿光闪一下
+      canvas.style.boxShadow = '0 0 30px #44ff88, 0 0 60px #44ff88aa';
+      setTimeout(() => { canvas.style.boxShadow = ''; }, 200);
+      return;
+    }
+
+    if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(key)) e.preventDefault();
   });
   window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
@@ -429,6 +434,15 @@
     // 炸弹
     for (const b of bombs) {
       ctx.save(); ctx.translate(b.x, b.y);
+
+      // 背向行进方向
+      if (!b.exploded) {
+        const dx = b.tx - b.x;
+        const dy = b.ty - b.y;
+        const angle = Math.atan2(dy, dx);
+        ctx.rotate(angle + Math.PI);
+      }
+
       const s = b.exploded ? b.scale : 1; ctx.scale(s, s);
       
       if (!b.exploded) {
@@ -437,7 +451,6 @@
           const dw = 32, dh = 32;
           ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
         } else {
-          // 贴图未加载时的备用绘制
           ctx.fillStyle = '#1a1a2e'; ctx.strokeStyle = SUIT_COLORS[b.suit]; ctx.lineWidth = 2.5;
           ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
           ctx.fillStyle = SUIT_COLORS[b.suit]; ctx.font = 'bold 16px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -477,9 +490,8 @@
       ctx.restore();
     }
 
-    // ---------- 绘制灵魂（使用 soul.png） ----------
+    // 灵魂
     if (state === 'playing' || state === 'start') {
-      // 无敌帧闪烁逻辑（保留）
       const alpha = invincible > 0 && Math.floor(invincible / 4) % 2 === 0 ? 0.3 : 1;
       ctx.globalAlpha = alpha;
 
@@ -487,12 +499,10 @@
       ctx.translate(soul.x, soul.y);
 
       if (soulImage) {
-        // 使用 soul.png 贴图
-        const dw = soul.r * 3.2; // 可根据实际贴图比例微调
+        const dw = soul.r * 3.2;
         const dh = soul.r * 3.2;
         ctx.drawImage(soulImage, -dw / 2, -dh / 2, dw, dh);
       } else {
-        // 贴图未加载完成时，回退到原手绘红心
         ctx.shadowColor = '#ff3355'; ctx.shadowBlur = 18; ctx.fillStyle = '#ff3355';
         ctx.beginPath(); const s = soul.r;
         ctx.moveTo(0, s * 0.4);
