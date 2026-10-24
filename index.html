@@ -1,34 +1,139 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>spamton</title>
+    <style>
+        /* 页面基础样式，还原图片中极简、纯白底色、黑色字体的风格 */
+        body {
+            background-color: #ffffff;
+            color: #000000;
+            font-family: "Microsoft YaHei", "SimSun", sans-serif; /* 使用常见的黑体或宋体 */
+            margin: 0;
+            padding: 20px;
+            position: relative;
+            min-height: 100vh;
+        }
 
-<title>是时候成为一个[[大人物]]了</title>
+        /* 标题样式 */
+        .title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+        }
 
-<link rel="icon" type="image/png" sizes="32x32" href="dumb.png">
+        /* 介绍文字样式 */
+        .intro-text {
+            font-size: 20px;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
 
-<link rel="apple-touch-icon" sizes="180x180" href="dumb.png">
+        /* 按钮容器 */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
 
-<script>
-function myFunction() {
-    document.getElementById("demo").innerHTML = "成为[[大人物]]!!，更[大]，[[更大]]，[[[更大]]]";
-}
-function myFunctions() {
-    document.getElementById("demo").innerHTML = "只能成为可悲的小海绵";
-}
-</script>
+        /* 按钮通用样式 */
+        button {
+            background-color: #ffffff;
+            color: #000000;
+            font-family: inherit;
+            font-size: 16px;
+            padding: 4px 12px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+
+        /* 按钮默认边框 */
+        button {
+            border: 1px solid #000000;
+        }
+
+        /* 激活状态的按钮（加粗边框，模拟图片中的选中效果） */
+        button.active {
+            border: 2px solid #000000;
+            padding: 3px 11px; /* 补偿边框增加的宽度，防止抖动 */
+            outline: 1px solid #000000; /* 模拟外发光/焦点效果 */
+        }
+
+        /* 按钮悬浮效果 */
+        button:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* 结果文本样式 */
+        .result-text {
+            font-size: 20px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-top: 20px;
+        }
+
+        /* 右上角的 Spamton 图片 */
+        .spamton-img {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 120px; /* 根据实际图片大小调整 */
+            height: auto;
+            pointer-events: none; /* 防止图片遮挡点击事件 */
+        }
+    </style>
 </head>
-
 <body>
 
-<h2>spamton</h2>
+    <!-- 右上角图片，请确保文件名与你仓库中的一致 -->
+    <img src="Spamton_NEO_battle_idle.gif" alt="Spamton" class="spamton-img">
 
-<h2>信不信由!@#$%^%$#$%^&。只要你[试一试]，你就能成为[[大人物]]<h2>
+    <!-- 页面主体内容 -->
+    <div class="title">spamton</div>
 
-<button type="button" onclick="myFunction()">接受[交易]</button>
+    <div class="intro-text">
+        信不信由!@#$%^%$#$%^&。只要你[试一试]，你就能成为[[大人物]]
+    </div>
 
-<button type="button" onclick="myFunctions()">不接受[交易]</button>
+    <div class="button-group">
+        <!-- 默认选中“接受[交易]” -->
+        <button id="btn-accept" class="active" onclick="handleAccept()">接受[交易]</button>
+        <button id="btn-reject" onclick="handleReject()">不接受[交易]</button>
+    </div>
 
-<p id="demo">只能成为可悲的小海绵</p>
+    <!-- 动态变化的文本 -->
+    <div id="result" class="result-text">
+        成为[[大人物]]!!，更[大]，[[更大]]，[[[更大]]]
+    </div>
 
+    <!-- 交互逻辑 -->
+    <script>
+        // 获取页面元素
+        const btnAccept = document.getElementById('btn-accept');
+        const btnReject = document.getElementById('btn-reject');
+        const resultText = document.getElementById('result');
+
+        // 点击“接受[交易]”时的逻辑
+        function handleAccept() {
+            // 切换按钮样式
+            btnAccept.classList.add('active');
+            btnReject.classList.remove('active');
+            
+            // 修改下方文本
+            resultText.innerHTML = '成为[[大人物]]!!，更[大]，[[更大]]，[[[更大]]]';
+        }
+
+        // 点击“不接受[交易]”时的逻辑
+        function handleReject() {
+            // 切换按钮样式
+            btnReject.classList.add('active');
+            btnAccept.classList.remove('active');
+            
+            // 修改下方文本
+            resultText.innerHTML = '只能成为可怜的小海绵';
+        }
+    </script>
 </body>
 </html>
