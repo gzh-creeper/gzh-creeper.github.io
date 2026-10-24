@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gzh-creeper.github.io/jevil</title>
+    <!-- 引入 Font Awesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 全局变量和基础样式 (GitHub Dark Mode 配色) */
+        :root {
+            --bg-color: #0d1117;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --link-color: #58a6ff;
+            --btn-bg: #21262d;
+            --btn-hover-bg: #30363d;
+            --row-hover-bg: #161b22;
+            --icon-folder: #54aeff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 24px;
+        }
+
+        a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* 顶部导航栏布局 */
+        .repo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 分支切换按钮 */
+        .branch-selector {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background-color: var(--btn-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+        
+        .branch-selector:hover {
+            background-color: var(--btn-hover-bg);
+        }
+
+        /* 面包屑导航 */
+        .breadcrumb {
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .breadcrumb a {
+            color: var(--link-color);
+        }
+        
+        .breadcrumb .separator {
+            color: var(--text-secondary);
+            margin: 0 4px;
+        }
+
+        .copy-btn {
+            color: var(--text-secondary);
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        /* 右侧操作区 */
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 搜索框 */
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 5px 12px 5px 32px;
+            color: var(--text-primary);
+            width: 250px;
+            outline: none;
+        }
+
+        .search-box input:focus {
+            border-color: var(--link-color);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.3);
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+        
+        .search-shortcut {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* 通用按钮样式 */
+        .btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background-color: var(--btn-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: var(--btn-hover-bg);
+        }
+
+        .btn-primary {
+            background-color: #238636;
+            border-color: rgba(240, 246, 252, 0.1);
+            color: #ffffff;
+        }
+
+        /* 提交信息栏 */
+        .commit-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            background-color: var(--bg-color);
+        }
+
+        .commit-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #e4e4e4; /* 占位色 */
+        }
+
+        .commit-left .username {
+            font-weight: 600;
+        }
+
+        .commit-message {
+            color: var(--text-secondary);
+        }
+
+        .verified-icon {
+            color: #3fb950;
+        }
+
+        .commit-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .commit-hash {
+            font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace;
+            color: var(--text-secondary);
+        }
+
+        .history-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background-color: var(--btn-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 4px 10px;
+            color: var(--text-primary);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        /* 文件列表区域 */
+        .file-browser {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .file-row {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 16px;
+            transition: background-color 0.2s;
+        }
+
+        .file-row:last-child {
+            border-bottom: none;
+        }
+
+        .file-row:hover {
+            background-color: var(--row-hover-bg);
+        }
+
+        /* 表头 */
+        .file-header {
+            background-color: var(--bg-color);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 12px;
+            padding: 10px 16px;
+        }
+
+        .file-header:hover {
+            background-color: var(--bg-color);
+        }
+
+        /* 列宽分配 */
+        .col-name {
+            flex: 3;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .col-name a {
+            color: var(--text-primary);
+        }
+
+        .col-name a:hover {
+            color: var(--link-color);
+        }
+
+        .col-message {
+            flex: 6;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .col-date {
+            flex: 2;
+            text-align: right;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        /* 图标颜色 */
+        .icon-folder {
+            color: var(--icon-folder);
+        }
+        
+        .icon-file {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 顶部导航 -->
+    <div class="repo-header">
+        <div class="header-left">
+            <div class="branch-selector">
+                <i class="fa-solid fa-code-branch"></i>
+                main
+                <i class="fa-solid fa-caret-down" style="margin-left: 4px; font-size: 12px;"></i>
+            </div>
+            <div class="breadcrumb">
+                <a href="#">gzh-creeper.github.io</a>
+                <span class="separator">/</span>
+                <a href="#" style="font-weight: 600;">jevil</a>
+                <span class="separator">/</span>
+                <i class="fa-regular fa-copy copy-btn" title="Copy path"></i>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" placeholder="Go to file">
+                <span class="search-shortcut">T</span>
+            </div>
+            <button class="btn">
+                Add file <i class="fa-solid fa-caret-down" style="margin-left: 4px; font-size: 12px;"></i>
+            </button>
+            <button class="btn" style="padding: 5px 10px;">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 提交信息栏 -->
+    <div class="commit-bar">
+        <div class="commit-left">
+            <!-- 头像 (使用占位图，实际可替换为真实图片) -->
+            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="avatar" class="avatar" style="background: white; padding: 2px;">
+            <span class="username">gzh-creeper</span>
+            <span class="commit-message">Add files via upload</span>
+            <i class="fa-solid fa-check verified-icon" title="Verified"></i>
+        </div>
+        <div class="commit-right">
+            <span class="commit-hash">d78dc02</span>
+            <span>&middot;</span>
+            <span>2 weeks ago</span>
+            <button class="history-btn">
+                <i class="fa-solid fa-clock-rotate-left"></i> History
+            </button>
+        </div>
+    </div>
+
+    <!-- 文件列表 -->
+    <div class="file-browser">
+        <!-- 表头 -->
+        <div class="file-row file-header">
+            <div class="col-name">Name</div>
+            <div class="col-message">Last commit message</div>
+            <div class="col-date">Last commit date</div>
+        </div>
+        
+        <!-- 返回上一级 -->
+        <div class="file-row">
+            <div class="col-name">
+                <i class="fa-solid fa-folder icon-folder"></i>
+                <a href="#">..</a>
+            </div>
+            <div class="col-message"></div>
+            <div class="col-date"></div>
+        </div>
+
+        <!-- 文件夹: chaos_bomb -->
+        <div class="file-row">
+            <div class="col-name">
+                <i class="fa-solid fa-folder icon-folder"></i>
+                <a href="#">chaos_bomb</a>
+            </div>
+            <div class="col-message">Add files via upload</div>
+            <div class="col-date">2 weeks ago</div>
+        </div>
+
+        <!-- 文件夹: crab -->
+        <div class="file-row">
+            <div class="col-name">
+                <i class="fa-solid fa-folder icon-folder"></i>
+                <a href="#">crab</a>
+            </div>
+            <div class="col-message">Add files via upload</div>
+            <div class="col-date">2 weeks ago</div>
+        </div>
+    </div>
+
+</body>
+</html>
