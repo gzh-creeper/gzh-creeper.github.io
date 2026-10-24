@@ -23,7 +23,7 @@ body {
   display: flex; flex-direction: column; gap: 8px; background: #1c1c21;
   transition: opacity 0.2s;
 }
-.group.off { opacity: 0.5; }
+.group.off { opacity: 0.8; } /* 整体略微降低对比度提示关闭 */
 
 .group-title {
   display: flex; align-items: center; gap: 8px;
@@ -39,9 +39,11 @@ body {
   font-size: 12px; font-weight: normal; color: #9c9cff; cursor: pointer;
 }
 .group-title input[type=checkbox] { accent-color: #3a6df0; }
+.group-title input[type=checkbox]:disabled { cursor: not-allowed; opacity: 0.5; }
+.group-title label:has(input[type=checkbox]:disabled) { color: #6b6b7a; cursor: not-allowed; }
 
 .group-content { display: flex; flex-direction: column; gap: 8px; }
-.group.off .group-content { pointer-events: none; }
+.group.off .group-content { display: none; } /* 核心修改：未启用直接隐藏参数面板 */
 
 .swatch-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #b9b9c4; }
 .swatch {
