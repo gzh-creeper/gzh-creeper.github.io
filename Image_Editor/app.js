@@ -45,8 +45,8 @@ const autoEl = document.getElementById('auto');
 const ampEl  = document.getElementById('amp');
 const ampVal = document.getElementById('ampVal');
 
-const driftSpeedEl = document.getElementById('driftSpeed');
-const driftSpeedVal = document.getElementById('driftSpeedVal');
+const driftCyclesEl = document.getElementById('driftCycles');
+const driftCyclesVal = document.getElementById('driftCyclesVal');
 
 const randXEl = document.getElementById('randX');
 const randXVal = document.getElementById('randXVal');
@@ -104,13 +104,7 @@ function setVal(id, val, type = 'input') {
   if (el.type === 'checkbox') el.checked = val;
   else el.value = val;
   const valEl = document.getElementById(id + 'Val');
-  if (valEl) {
-    if (id === 'driftSpeed') {
-      valEl.textContent = Number(val).toFixed(1);
-    } else {
-      valEl.textContent = val;
-    }
-  }
+  if (valEl) valEl.textContent = val;
   el.dispatchEvent(new Event(type, { bubbles: true }));
 }
 
@@ -132,13 +126,13 @@ presetRGBEl.addEventListener('change', (e) => {
   isApplyingPreset = true;
   if (e.target.value === 'red_blue') {
     setVal('rx', 15); setVal('ry', 0); setVal('gx', 0); setVal('gy', 0); setVal('bx', -15); setVal('by', 0);
-    setVal('auto', false, 'change'); setVal('randX', 0); setVal('randY', 0); setVal('driftSpeed', 1);
+    setVal('auto', false, 'change'); setVal('randX', 0); setVal('randY', 0); setVal('driftCycles', 2);
   } else if (e.target.value === 'extreme') {
     setVal('rx', 20); setVal('ry', 0); setVal('gx', 0); setVal('gy', 0); setVal('bx', -20); setVal('by', 0);
-    setVal('auto', true, 'change'); setVal('amp', 10); setVal('randX', 15); setVal('randY', 10); setVal('driftSpeed', 1.5);
+    setVal('auto', true, 'change'); setVal('amp', 10); setVal('randX', 15); setVal('randY', 10); setVal('driftCycles', 5);
   } else if (e.target.value === 'static') {
     setVal('rx', 0); setVal('ry', 0); setVal('gx', 0); setVal('gy', 0); setVal('bx', 0); setVal('by', 0);
-    setVal('auto', false, 'change'); setVal('randX', 0); setVal('randY', 0); setVal('driftSpeed', 1);
+    setVal('auto', false, 'change'); setVal('randX', 0); setVal('randY', 0); setVal('driftCycles', 2);
   }
   isApplyingPreset = false;
 });
@@ -176,7 +170,7 @@ document.querySelectorAll('input, select').forEach(el => {
   el.addEventListener('input', () => {
     if (isApplyingPreset) return;
     if (['tol','lw','pos','split'].includes(el.id)) presetOutlineEl.value = 'custom';
-    else if (['rx','ry','gx','gy','bx','by','edge','auto','amp','randX','randY','driftSpeed'].includes(el.id)) presetRGBEl.value = 'custom';
+    else if (['rx','ry','gx','gy','bx','by','edge','auto','amp','randX','randY','driftCycles'].includes(el.id)) presetRGBEl.value = 'custom';
     else if (['sliceShiftX','sliceShiftY','sliceSize','autoSlice'].includes(el.id)) presetSliceEl.value = 'custom';
     else if (['noiseIntensity','noiseSize','noiseColor','noiseStripe'].includes(el.id)) presetNoiseEl.value = 'custom';
   });
@@ -199,11 +193,6 @@ document.querySelectorAll('.step-btn').forEach(btn => {
     if (!input) return;
     
     let newVal = Number(input.value) + step;
-    
-    if (step % 1 !== 0) {
-      newVal = Math.round(newVal * 10) / 10;
-    }
-    
     newVal = Math.max(Number(input.min), Math.min(Number(input.max), newVal));
     input.value = newVal;
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -366,7 +355,7 @@ splitEl.addEventListener('change', onOutlineChange);
 
 edgeEl.addEventListener('change', requestRender);
 ampEl.addEventListener('input', () => { ampVal.textContent = ampEl.value; requestRender(); });
-driftSpeedEl.addEventListener('input', () => { driftSpeedVal.textContent = Number(driftSpeedEl.value).toFixed(1); requestRender(); });
+driftCyclesEl.addEventListener('input', () => { driftCyclesVal.textContent = driftCyclesEl.value; requestRender(); });
 autoEl.addEventListener('change', requestRender);
 autoSliceEl.addEventListener('change', () => {
   if (autoSliceEl.checked) requestRender();
@@ -390,7 +379,7 @@ sliceShiftYEl.addEventListener('input', () => { sliceShiftYVal.textContent = sli
 sliceSizeEl.addEventListener('input', () => { sliceSizeVal.textContent = sliceSizeEl.value; regenSlices(); });
 regenBtn.addEventListener('click', regenSlices);
 
-/* ================= 取色与上传（适配移动端触摸事件） ================= */
+/* ================= 取色与上传 ================= */
 function updateSwatch() {
   if (!bg) { swatch.style.background = ''; bgText.textContent = '未选择'; return; }
   swatch.style.background = `rgb(${bg.r},${bg.g},${bg.b})`;
@@ -420,7 +409,7 @@ function handleCanvasClick(clientX, clientY) {
 canvas.addEventListener('click', e => handleCanvasClick(e.clientX, e.clientY));
 canvas.addEventListener('touchstart', e => {
   if (e.touches.length > 0) {
-    e.preventDefault(); // 阻止移动端双击缩放等默认行为
+    e.preventDefault();
     handleCanvasClick(e.touches[0].clientX, e.touches[0].clientY);
   }
 }, { passive: false });
@@ -473,7 +462,7 @@ exportPresetBtn.addEventListener('click', () => {
     edge: edgeEl.value,
     auto: autoEl.checked,
     amp: +ampEl.value,
-    driftSpeed: +driftSpeedEl.value,
+    driftCycles: +driftCyclesEl.value,
     randX: +randXEl.value,
     randY: +randYEl.value,
     enableSlice: enableSliceEl.checked,
@@ -532,10 +521,12 @@ importPresetInput.addEventListener('change', (e) => {
       if (data.gy !== undefined) setVal('gy', data.gy);
       if (data.bx !== undefined) setVal('bx', data.bx);
       if (data.by !== undefined) setVal('by', data.by);
-      if (data.edge !== undefined) setVal('edge', data.edge, 'change');
+      if (data.edge !== undefined) {
+        setVal('edge', data.edge === 'alpha' ? 'clamp' : data.edge, 'change');
+      }
       if (data.auto !== undefined) setVal('auto', data.auto, 'change');
       if (data.amp !== undefined) setVal('amp', data.amp);
-      if (data.driftSpeed !== undefined) setVal('driftSpeed', data.driftSpeed);
+      if (data.driftCycles !== undefined) setVal('driftCycles', data.driftCycles);
       if (data.randX !== undefined) setVal('randX', data.randX);
       if (data.randY !== undefined) setVal('randY', data.randY);
       
@@ -587,9 +578,10 @@ document.getElementById('reset').addEventListener('click', () => {
   presetNoiseEl.value = 'custom';
 
   padEl.value = 80; padVal.textContent = 80;
-  enableOutlineEl.checked = true;
-  enableRGBEl.checked = false;
-  enableSliceEl.checked = false;
+  
+  enableOutlineEl.checked = false;
+  enableRGBEl.checked = true;
+  enableSliceEl.checked = true;
   enableNoiseEl.checked = false;
   
   tolEl.value = 30;  tolVal.textContent = 30;
@@ -604,11 +596,11 @@ document.getElementById('reset').addEventListener('click', () => {
       chans[c][a] = 0;
     });
   });
-  edgeEl.value = 'alpha';
+  edgeEl.value = 'clamp';
   autoEl.checked = true;
   ampEl.value = 14; ampVal.textContent = 14;
   
-  driftSpeedEl.value = 1; driftSpeedVal.textContent = '1.0';
+  driftCyclesEl.value = 2; driftCyclesVal.textContent = '2';
 
   randXEl.value = 0; randXVal.textContent = '0';
   randYEl.value = 0; randYVal.textContent = '0';
@@ -651,3 +643,6 @@ window.addEventListener('paste', e => {
   const it = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
   if (it) loadFile(it.getAsFile());
 });
+
+// 初始化 UI 折叠状态
+updateUIState();
