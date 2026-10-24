@@ -23,7 +23,7 @@ body {
   display: flex; flex-direction: column; gap: 8px; background: #1c1c21;
   transition: opacity 0.2s;
 }
-.group.off { opacity: 0.8; } /* 整体略微降低对比度提示关闭 */
+.group.off { opacity: 0.8; }
 
 .group-title {
   display: flex; align-items: center; gap: 8px;
@@ -43,7 +43,7 @@ body {
 .group-title label:has(input[type=checkbox]:disabled) { color: #6b6b7a; cursor: not-allowed; }
 
 .group-content { display: flex; flex-direction: column; gap: 8px; }
-.group.off .group-content { display: none; } /* 核心修改：未启用直接隐藏参数面板 */
+.group.off .group-content { display: none; }
 
 .swatch-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #b9b9c4; }
 .swatch {
@@ -131,8 +131,9 @@ select {
 canvas {
   display: block; max-width: 100%; max-height: 100%;
   image-rendering: auto; cursor: crosshair;
-  background: repeating-conic-gradient(#26262b 0 25%, #1c1c20 0 50%) 0 0 / 16px 16px;
+  background: #000000;
   box-shadow: 0 0 0 1px #33333b;
+  touch-action: none; /* 阻止移动端触摸滚动/缩放 */
 }
 .recording-dot {
   position: absolute; top: 36px; right: 36px;
@@ -141,3 +142,21 @@ canvas {
   box-shadow: 0 0 8px #ff4d4d; z-index: 10;
 }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* 移动端/iPad 适配 */
+@media (max-width: 800px) {
+  body {
+    flex-direction: column;
+  }
+  .panel {
+    width: 100%;
+    height: 50vh; /* 面板占一半高度，可滚动 */
+    border-right: none;
+    border-bottom: 1px solid #2e2e35;
+    padding: 12px;
+  }
+  .stage {
+    height: 50vh;
+    padding: 12px;
+  }
+}
