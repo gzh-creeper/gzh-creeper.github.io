@@ -147,9 +147,10 @@ function render() {
   const W = baseData.width, H = baseData.height;
   const s = baseData.data;
 
-  // 核心修改：引入速度系数
-  const speed = +driftSpeedEl.value;
-  const t = (performance.now() * 0.001) * speed;
+  const cycles = +driftCyclesEl.value;
+  const duration = +document.getElementById('gifDuration').value || 1;
+  const speedFactor = 5.0 * cycles / (duration * 2.0);
+  const t = (performance.now() * 0.001) * speedFactor;
   const A = (enableRGBEl.checked && autoEl.checked) ? +ampEl.value : 0;
 
   let ox = [0, 0, 0], oy = [0, 0, 0];
@@ -188,10 +189,6 @@ function render() {
   const d = outData.data;
   const mode = edgeEl.value;
   const wrap = mode === 'wrap';
-  const alphaMode = mode === 'alpha';
-  
-  const useOutline = enableOutlineEl.checked;
-  const forceOpaque = !useOutline && !alphaMode;
 
   for (let y = 0; y < H; y++) {
     const rowBase = y * W;
@@ -203,12 +200,12 @@ function render() {
 
       let outR = 0, outG = 0, outB = 0, outA = 0;
 
+      // 采样 RGB（包含 RGB 偏移和切割影响）
       for (let c = 0; c < 3; c++) {
         let sx = x - cutX - ox[c];
         let sy = y - cutY - oy[c];
 
         if (sx < 0 || sx >= W || sy < 0 || sy >= H) {
-          if (alphaMode) { continue; }
           if (wrap) {
             sx = ((sx % W) + W) % W;
             sy = ((sy % H) + H) % H;
@@ -224,32 +221,24 @@ function render() {
         else if (c === 2) outB = s[sp + 2];
       }
 
-      if (forceOpaque) {
-        outA = 255;
-      } else {
-        let baseSx = x - cutX;
-        let baseSy = y - cutY;
-        if (baseSx < 0 || baseSx >= W || baseSy < 0 || baseSy >= H) {
-          if (alphaMode) {
-            outA = 0;
-          } else if (wrap) {
-            baseSx = ((baseSx % W) + W) % W;
-            baseSy = ((baseSy % H) + H) % H;
-            outA = s[((baseSy * W + baseSx) << 2) + 3];
-          } else {
-            baseSx = baseSx < 0 ? 0 : (baseSx >= W ? W - 1 : baseSx);
-            baseSy = baseSy < 0 ? 0 : (baseSy >= H ? H - 1 : baseSy);
-            outA = s[((baseSy * W + baseSx) << 2) + 3];
-          }
+      // 采样 Alpha（只包含切割影响，不受 RGB 偏移影响，保持整体轮廓清晰）
+      let baseSx = x - cutX;
+      let baseSy = y - cutY;
+      if (baseSx < 0 || baseSx >= W || baseSy < 0 || baseSy >= H) {
+        if (wrap) {
+          baseSx = ((baseSx % W) + W) % W;
+          baseSy = ((baseSy % H) + H) % H;
+          outA = s[((baseSy * W + baseSx) << 2) + 3];
         } else {
+          baseSx = baseSx < 0 ? 0 : (baseSx >= W ? W - 1 : baseSx);
+          baseSy = baseSy < 0 ? 0 : (baseSy >= H ? H - 1 : baseSy);
           outA = s[((baseSy * W + baseSx) << 2) + 3];
         }
+      } else {
+        outA = s[((baseSy * W + baseSx) << 2) + 3];
       }
 
-      if (outA === 0) {
-        outR = 0; outG = 0; outB = 0; outA = 255;
-      }
-
+      // 完全保留原图透明通道
       d[di] = outR;
       d[di + 1] = outG;
       d[di + 2] = outB;
