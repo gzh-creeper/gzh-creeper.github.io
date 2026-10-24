@@ -31,11 +31,9 @@ recordGifBtn.addEventListener('click', () => {
     if (!confirm(`当前尺寸 (${targetW}x${targetH}) 极大，编码处理将非常缓慢。是否继续？`)) return;
   }
 
-  // 记录录制前的动画状态，以便录制完成后恢复
   window.prevAuto = autoEl.checked;
   window.prevAutoSlice = autoSliceEl.checked;
 
-  // 如果没开任何动画，默认开启一个保证 GIF 是动态的
   if (!autoEl.checked && !autoSliceEl.checked && !enableNoiseEl.checked) {
     autoEl.checked = true;
     presetRGBEl.value = 'custom';
@@ -116,17 +114,14 @@ function stopRecordingAndEncode() {
       recordGifBtn.disabled = false;
       recordGifBtn.textContent = '开始录制并导出';
       
-      // 1. 解除编码锁定
       isEncoding = false;
       recordedCanvases = [];
 
-      // 2. 恢复录制前的动画开关状态
       if (window.prevAuto !== undefined) {
         autoEl.checked = window.prevAuto;
         autoSliceEl.checked = window.prevAutoSlice;
       }
 
-      // 3. 强制重置主循环 ID 并唤醒渲染
       rafId = null;
       requestRender();
       
