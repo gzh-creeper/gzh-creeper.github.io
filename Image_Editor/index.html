@@ -42,7 +42,7 @@
   <div class="group" id="groupOutline">
     <div class="group-title">
       <span class="num">1</span>色块描黑边
-      <label><input type="checkbox" id="enableOutline" checked>启用</label>
+      <label><input type="checkbox" id="enableOutline">启用</label>
     </div>
     <div class="group-content">
       <select id="presetOutline" style="margin-bottom: 4px;">
@@ -156,8 +156,7 @@
 
       <div class="row" style="margin-top:6px;"><span>边缘处理</span></div>
       <select id="edge">
-        <option value="alpha">透明（抠掉）</option>
-        <option value="clamp">拉伸边缘</option>
+        <option value="clamp" selected>拉伸边缘</option>
         <option value="wrap">循环平铺</option>
       </select>
 
@@ -172,16 +171,15 @@
       </div>
       <input type="range" id="amp" min="0" max="60" value="14">
 
-      <!-- 新增：漂移速度 -->
       <div class="row" style="margin-top:4px;">
-        <span>漂移速度</span>
+        <span>录制时运动次数</span>
         <div class="stepper">
-          <button class="step-btn" data-target="driftSpeed" data-step="-0.1">◀</button>
-          <b id="driftSpeedVal">1.0</b>
-          <button class="step-btn" data-target="driftSpeed" data-step="0.1">▶</button>
+          <button class="step-btn" data-target="driftCycles" data-step="-1">◀</button>
+          <b id="driftCyclesVal">2</b>
+          <button class="step-btn" data-target="driftCycles" data-step="1">▶</button>
         </div>
       </div>
-      <input type="range" id="driftSpeed" min="0" max="3" step="0.1" value="1">
+      <input type="range" id="driftCycles" min="1" max="10" step="1" value="2">
 
       <div class="row" style="margin-top:4px;">
         <span>X 随机幅度</span>
@@ -334,7 +332,7 @@
   </div>
 
   <p class="tip">
-    勾选“描边”可将背景抠透明；开启 RGB 的“漂移速度”可控制正弦动画的快慢。
+    勾选“描边”可将背景抠透明；开启 RGB 的“录制时运动次数”可自动根据录制总时长计算循环快慢。
   </p>
 </div>
 
