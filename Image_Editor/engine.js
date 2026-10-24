@@ -79,12 +79,34 @@ function computeOutline() {
   const out  = new ImageData(new Uint8ClampedArray(src), W, H);
   const od   = out.data;
 
+  // 核心修改：处理黑边并抠掉背景
   for (let i = 0; i < N; i++) {
-    if (!mask[i]) continue;
-    if (pos === 'inner' && isBg[i]) continue;
-    if (pos === 'outer' && !isBg[i]) continue;
     const p = i << 2;
-    od[p] = 0; od[p + 1] = 0; od[p + 2] = 0; od[p + 3] = 255;
+    const isBgPixel = isBg[i];
+    
+    if (mask[i]) {
+      // 属于描边区域
+      if (isBgPixel) {
+        // 背景侧的描边
+        if (pos === 'center' || pos === 'outer') {
+          od[p] = 0; od[p + 1] = 0; od[p + 2] = 0; od[p + 3] = 255;
+        } else {
+          // inner 模式下，背景侧不画黑边，直接透明
+          od[p + 3] = 0;
+        }
+      } else {
+        // 前景侧的描边
+        if (pos === 'center' || pos === 'inner') {
+          od[p] = 0; od[p + 1] = 0; od[p + 2] = 0; od[p + 3] = 255;
+        }
+      }
+    } else {
+      // 不属于描边区域
+      if (isBgPixel) {
+        // 纯背景，直接抠成透明
+        od[p + 3] = 0;
+      }
+    }
   }
 
   outlineData = out;
@@ -181,12 +203,16 @@ function render() {
       const di = (rowBase + x) << 2;
       const cutY = useSlice ? (shiftY[x] || 0) : 0;
 
+      let outR = 0, outG = 0, outB = 0, outA = 0;
+
+      // 修复：Alpha 通道跟随一起位移（避免飞出去的部分被透明区域截断）
+      // 并且如果开启了背景抠除，那么 RGB 位移时也是针对带有透明背景的图层进行
       for (let c = 0; c < 3; c++) {
         let sx = x - cutX - ox[c];
         let sy = y - cutY - oy[c];
 
         if (sx < 0 || sx >= W || sy < 0 || sy >= H) {
-          if (alphaMode) { d[di + c] = 0; continue; }
+          if (alphaMode) { continue; }
           if (wrap) {
             sx = ((sx % W) + W) % W;
             sy = ((sy % H) + H) % H;
@@ -195,9 +221,36 @@ function render() {
             sy = sy < 0 ? 0 : (sy >= H ? H - 1 : sy);
           }
         }
-        d[di + c] = s[((sy * W + sx) << 2) + c];
+        
+        const sp = ((sy * W + sx) << 2);
+        if (c === 0) outR = s[sp];
+        else if (c === 1) outG = s[sp + 1];
+        else if (c === 2) outB = s[sp + 2];
       }
-      d[di + 3] = 255; 
+
+      // 统一计算 Alpha（忽略 ox/oy 的色散，只取 cutX/cutY）
+      let baseSx = x - cutX;
+      let baseSy = y - cutY;
+      if (baseSx < 0 || baseSx >= W || baseSy < 0 || baseSy >= H) {
+        if (alphaMode) {
+          outA = 0;
+        } else if (wrap) {
+          baseSx = ((baseSx % W) + W) % W;
+          baseSy = ((baseSy % H) + H) % H;
+          outA = s[((baseSy * W + baseSx) << 2) + 3];
+        } else {
+          baseSx = baseSx < 0 ? 0 : (baseSx >= W ? W - 1 : baseSx);
+          baseSy = baseSy < 0 ? 0 : (baseSy >= H ? H - 1 : baseSy);
+          outA = s[((baseSy * W + baseSx) << 2) + 3];
+        }
+      } else {
+        outA = s[((baseSy * W + baseSx) << 2) + 3];
+      }
+
+      d[di] = outR;
+      d[di + 1] = outG;
+      d[di + 2] = outB;
+      d[di + 3] = outA;
     }
   }
   
@@ -256,6 +309,8 @@ function drawNoise(W, H) {
       const sliceH = Math.random() * 15 + 2;
       const offsetX = (Math.random() - 0.5) * W * 0.3 * intensity;
       
+      // 在绘制干扰条时，建议也带上 alpha 检查，如果背景被抠空，这里会有透明条
+      // 由于是横向错位，所以直接 drawImage 是没问题的，会自动带上 alpha
       ctx.drawImage(
         canvas, 
         0, sliceY, W, sliceH, 
