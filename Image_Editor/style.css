@@ -133,7 +133,7 @@ canvas {
   image-rendering: auto; cursor: crosshair;
   background: #000000;
   box-shadow: 0 0 0 1px #33333b;
-  touch-action: none; /* 阻止移动端触摸滚动/缩放 */
+  touch-action: none;
 }
 .recording-dot {
   position: absolute; top: 36px; right: 36px;
@@ -143,20 +143,14 @@ canvas {
 }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-/* 移动端/iPad 适配 */
 @media (max-width: 800px) {
-  body {
-    flex-direction: column;
-  }
+  body { flex-direction: column; }
   .panel {
     width: 100%;
-    height: 50vh; /* 面板占一半高度，可滚动 */
+    height: 50vh;
     border-right: none;
     border-bottom: 1px solid #2e2e35;
     padding: 12px;
   }
-  .stage {
-    height: 50vh;
-    padding: 12px;
-  }
+  .stage { height: 50vh; padding: 12px; }
 }
