@@ -172,6 +172,17 @@
       </div>
       <input type="range" id="amp" min="0" max="60" value="14">
 
+      <!-- 新增：漂移速度 -->
+      <div class="row" style="margin-top:4px;">
+        <span>漂移速度</span>
+        <div class="stepper">
+          <button class="step-btn" data-target="driftSpeed" data-step="-0.1">◀</button>
+          <b id="driftSpeedVal">1.0</b>
+          <button class="step-btn" data-target="driftSpeed" data-step="0.1">▶</button>
+        </div>
+      </div>
+      <input type="range" id="driftSpeed" min="0" max="3" step="0.1" value="1">
+
       <div class="row" style="margin-top:4px;">
         <span>X 随机幅度</span>
         <div class="stepper">
@@ -323,7 +334,7 @@
   </div>
 
   <p class="tip">
-    开启 RGB 的“X/Y 随机幅度”后，红绿蓝通道会逐帧产生随机分离，形成剧烈的信号破碎效果。
+    勾选“描边”可将背景抠透明；开启 RGB 的“漂移速度”可控制正弦动画的快慢。
   </p>
 </div>
 
@@ -332,7 +343,6 @@
   <div class="recording-dot" id="recordingDot"></div>
 </div>
 
-<!-- 按顺序加载依赖 -->
 <script src="app.js"></script>
 <script src="engine.js"></script>
 <script src="exporter.js"></script>
