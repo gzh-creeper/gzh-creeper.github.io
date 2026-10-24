@@ -63,7 +63,7 @@ const recordGifBtn = document.getElementById('recordGif');
 const gifStatusEl = document.getElementById('gifStatus');
 const recordingDot = document.getElementById('recordingDot');
 
-/* 统一声明核心变量，防止其他文件重复定义冲突 */
+/* 核心状态变量 */
 let rawOrigData = null;
 let origData    = null;
 let outlineData = null;
@@ -223,14 +223,55 @@ function applyPadding() {
   requestRender();
 }
 
+/* ================= 互斥逻辑核心 ================= */
 function updateUIState() {
+  const isOutline = enableOutlineEl.checked;
+
+  // 互斥逻辑：如果启用了描边，强制关闭并禁用其他特效
+  if (isOutline) {
+    if (enableRGBEl.checked) { enableRGBEl.checked = false; }
+    if (enableSliceEl.checked) { enableSliceEl.checked = false; }
+    if (enableNoiseEl.checked) { enableNoiseEl.checked = false; }
+    
+    // 同时取消动画
+    autoEl.checked = false;
+    autoSliceEl.checked = false;
+  }
+
+  enableRGBEl.disabled = isOutline;
+  enableSliceEl.disabled = isOutline;
+  enableNoiseEl.disabled = isOutline;
+
+  // UI 隐藏控制
   groupOutline.classList.toggle('off', !enableOutlineEl.checked);
   groupRGB.classList.toggle('off', !enableRGBEl.checked);
   groupSlice.classList.toggle('off', !enableSliceEl.checked);
   groupNoise.classList.toggle('off', !enableNoiseEl.checked);
+
   requestRender();
 }
 
+/* ================= 其他特效被选中时，取消描边 ================= */
+enableRGBEl.addEventListener('change', () => {
+  if (enableRGBEl.checked) enableOutlineEl.checked = false;
+  updateUIState();
+});
+enableSliceEl.addEventListener('change', () => {
+  if (enableSliceEl.checked) enableOutlineEl.checked = false;
+  updateUIState();
+});
+enableNoiseEl.addEventListener('change', () => {
+  if (enableNoiseEl.checked) enableOutlineEl.checked = false;
+  updateUIState();
+  if (enableNoiseEl.checked) requestRender();
+});
+
+enableOutlineEl.addEventListener('change', () => {
+  updateUIState();
+  onOutlineChange();
+});
+
+/* ================= 循环渲染 ================= */
 function tick() {
   if (isEncoding) {
     rafId = null;
@@ -338,14 +379,6 @@ sliceShiftXEl.addEventListener('input', () => { sliceShiftXVal.textContent = sli
 sliceShiftYEl.addEventListener('input', () => { sliceShiftYVal.textContent = sliceShiftYEl.value; regenSlices(); });
 sliceSizeEl.addEventListener('input', () => { sliceSizeVal.textContent = sliceSizeEl.value; regenSlices(); });
 regenBtn.addEventListener('click', regenSlices);
-
-enableOutlineEl.addEventListener('change', () => { updateUIState(); onOutlineChange(); });
-enableRGBEl.addEventListener('change', updateUIState);
-enableSliceEl.addEventListener('change', updateUIState);
-enableNoiseEl.addEventListener('change', () => {
-  updateUIState();
-  if (enableNoiseEl.checked) requestRender();
-});
 
 /* ================= 取色与上传 ================= */
 function updateSwatch() {
@@ -461,6 +494,11 @@ importPresetInput.addEventListener('change', (e) => {
       const data = JSON.parse(ev.target.result);
       isApplyingPreset = true;
 
+      // 重置互斥状态
+      enableRGBEl.disabled = false;
+      enableSliceEl.disabled = false;
+      enableNoiseEl.disabled = false;
+
       if (data.pad !== undefined) setVal('pad', data.pad);
       
       if (data.enableOutline !== undefined) setVal('enableOutline', data.enableOutline, 'change');
@@ -505,6 +543,7 @@ importPresetInput.addEventListener('change', (e) => {
       presetNoiseEl.value = 'custom';
       
       isApplyingPreset = false;
+      updateUIState();
       applyPadding();
       
       importPresetInput.value = '';
@@ -530,8 +569,8 @@ document.getElementById('reset').addEventListener('click', () => {
 
   padEl.value = 80; padVal.textContent = 80;
   enableOutlineEl.checked = true;
-  enableRGBEl.checked = true;
-  enableSliceEl.checked = true;
+  enableRGBEl.checked = false;
+  enableSliceEl.checked = false;
   enableNoiseEl.checked = false;
   
   tolEl.value = 30;  tolVal.textContent = 30;
