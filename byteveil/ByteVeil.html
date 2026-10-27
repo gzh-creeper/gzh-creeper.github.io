@@ -1,0 +1,3844 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#090c0a">
+  <meta name="description" content="ByteVeil 字节帘：在浏览器里用密钥把任意文件加密成可还原的 .bveil 封包。完全本地，不上传。">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-ACaY3fJ/MuqJ6Er3xlXeOnlycXhZjeSk5r1dVf+zYcs=' 'sha256-2lmMq++/Mscr51XqIbpw387ZNbQ7M0ZMN0Qk3T9dp3U='; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>ByteVeil 字节帘 · 用密钥打乱任意文件</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d8ff54'/%3E%3Cpath d='M7 7h7v7H7zM18 7h7v7h-7zM7 18h7v7H7z' fill='%23111608'/%3E%3Cpath d='M18 18h3v3h-3zM21 21h3v3h-3z' fill='%23111608' opacity='.35'/%3E%3C/svg%3E">
+  <style>
+:root {
+  --bg: #080b09;
+  --bg-soft: #0b0f0c;
+  --panel: #0f1511;
+  --panel-deep: #0a0e0b;
+  --ink: #eef3ea;
+  --muted: #a0aba2;
+  --faint: #748077;
+  --line: rgba(231, 244, 227, 0.09);
+  --line-strong: rgba(231, 244, 227, 0.17);
+  --lime: #d8ff54;
+  --lime-soft: rgba(216, 255, 84, 0.12);
+  --mint: #75e5c9;
+  --amber: #ffc873;
+  --red: #ff857b;
+  --sans: "Inter", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: "Cascadia Code", "SFMono-Regular", "JetBrains Mono", "Consolas", "Liberation Mono", monospace;
+  --radius-panel: 26px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 300px;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.72), transparent 78%);
+}
+
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(760px 600px at 91% -8%, rgba(216, 255, 84, 0.095), transparent 62%),
+    radial-gradient(800px 760px at -7% 102%, rgba(117, 229, 201, 0.06), transparent 64%),
+    radial-gradient(500px 500px at 52% 16%, rgba(216, 255, 84, 0.028), transparent 70%);
+}
+
+.ambient::after {
+  content: "";
+  position: absolute;
+  top: 9%;
+  right: 4%;
+  width: 260px;
+  height: 260px;
+  border: 1px solid rgba(216, 255, 84, 0.08);
+  border-radius: 50%;
+  box-shadow: 0 0 0 38px rgba(216, 255, 84, 0.018), 0 0 0 92px rgba(216, 255, 84, 0.012);
+}
+
+/* ------------------------------------------------------------------ */
+/* Boot screen                                                         */
+/* ------------------------------------------------------------------ */
+
+.boot-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(520px 420px at 50% 44%, rgba(216, 255, 84, 0.09), transparent 72%),
+    radial-gradient(800px 600px at 50% 118%, rgba(117, 229, 201, 0.05), transparent 68%),
+    #080b09;
+  animation: bootCurtain 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.boot-screen::before {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: radial-gradient(circle at 50% 45%, #000 0%, rgba(0, 0, 0, 0.26) 52%, transparent 72%);
+}
+
+.boot-screen::after {
+  content: "";
+  position: absolute;
+  width: min(56vw, 560px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(216, 255, 84, 0.07);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 54px rgba(216, 255, 84, 0.016),
+    0 0 0 138px rgba(216, 255, 84, 0.009);
+}
+
+.boot-panel {
+  position: relative;
+  z-index: 1;
+  min-width: 250px;
+  padding: 32px;
+  text-align: center;
+}
+
+.boot-mark {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 19px;
+  border: 1px solid rgba(216, 255, 84, 0.26);
+  border-radius: 16px;
+  background: rgba(216, 255, 84, 0.055);
+  color: var(--lime);
+  box-shadow:
+    0 0 44px rgba(216, 255, 84, 0.1),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  animation: bootRise 560ms 40ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.boot-mark svg {
+  width: 31px;
+  height: 31px;
+}
+
+.boot-name {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+  animation: bootRise 560ms 110ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.boot-name span {
+  display: block;
+  margin-top: 7px;
+  color: var(--faint);
+  font-family: var(--sans);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.52em;
+  text-indent: 0.52em;
+}
+
+.boot-rule {
+  position: relative;
+  display: block;
+  width: 148px;
+  height: 1px;
+  margin: 24px auto 20px;
+  overflow: hidden;
+  background: rgba(231, 244, 227, 0.09);
+  animation: bootRise 500ms 200ms ease both;
+}
+
+.boot-rule i {
+  position: absolute;
+  inset: 0;
+  width: 46%;
+  background: linear-gradient(90deg, transparent, var(--lime), transparent);
+  animation: bootScan 1.15s 250ms ease-in-out infinite;
+}
+
+.boot-credit {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.9;
+  letter-spacing: 0.07em;
+}
+
+.boot-credit b {
+  color: var(--lime);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+}
+
+.boot-credit--one {
+  animation: bootRise 450ms 250ms ease both;
+}
+
+.boot-credit--two {
+  margin-top: 2px;
+  animation: bootRise 450ms 330ms ease both;
+}
+
+::selection {
+  color: #111609;
+  background: var(--lime);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 3px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Top bar                                                             */
+/* ------------------------------------------------------------------ */
+
+.topbar {
+  width: min(1240px, calc(100% - 72px));
+  margin: 0 auto;
+  padding: 26px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  user-select: none;
+}
+
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: #111609;
+  background: var(--lime);
+  border-radius: 11px;
+  box-shadow: 0 0 28px rgba(216, 255, 84, 0.16);
+}
+
+.brand-mark svg {
+  width: 23px;
+  height: 23px;
+}
+
+.brand-type {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.brand-type strong {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0.19em;
+  font-weight: 700;
+}
+
+.brand-type em {
+  margin-top: 3px;
+  color: var(--faint);
+  font-size: 9.5px;
+  font-style: normal;
+  letter-spacing: 0.34em;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.local-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(10, 14, 11, 0.62);
+  color: var(--muted);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.local-pill i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 0 3px rgba(216, 255, 84, 0.1), 0 0 8px rgba(216, 255, 84, 0.6);
+  animation: breathe 3.4s ease-in-out infinite;
+}
+
+.top-link {
+  color: var(--muted);
+  font-size: 11.5px;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.top-link:hover {
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ */
+/* Layout                                                              */
+/* ------------------------------------------------------------------ */
+
+.page {
+  width: min(1240px, calc(100% - 72px));
+  margin: 0 auto;
+  padding: 58px 0 76px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.03fr) minmax(430px, 0.97fr);
+  gap: clamp(40px, 5.4vw, 78px);
+  align-items: start;
+}
+
+/* ------------------------------------------------------------------ */
+/* Intro                                                               */
+/* ------------------------------------------------------------------ */
+
+.intro {
+  padding-top: 26px;
+  animation: rise 680ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 22px;
+  color: var(--lime);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+}
+
+.eyebrow span {
+  width: 18px;
+  height: 1px;
+  background: var(--lime);
+  box-shadow: 0 0 8px rgba(216, 255, 84, 0.45);
+}
+
+.intro h1 {
+  margin: 0;
+  max-width: 660px;
+  font-size: clamp(2.7rem, 4.65vw, 4.45rem);
+  font-weight: 700;
+  line-height: 1.09;
+  letter-spacing: -0.058em;
+}
+
+.highlight {
+  display: inline-block;
+  margin: 0.06em 0;
+  padding: 0.015em 0.13em 0.08em 0.09em;
+  color: #111608;
+  background: var(--lime);
+  border-radius: 5px;
+  letter-spacing: -0.075em;
+  box-shadow: 0 0 48px rgba(216, 255, 84, 0.12);
+}
+
+.lede {
+  max-width: 530px;
+  margin: 26px 0 0;
+  color: var(--muted);
+  font-size: 15.5px;
+  line-height: 1.85;
+  letter-spacing: 0.005em;
+}
+
+.steps {
+  max-width: 535px;
+  margin: 36px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.steps li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 13px;
+  padding: 14px 0 15px;
+  border-bottom: 1px solid var(--line);
+}
+
+.step-no {
+  padding-top: 2px;
+  color: var(--lime);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+}
+
+.step-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.step-copy b {
+  font-size: 13px;
+  font-weight: 560;
+  letter-spacing: 0.03em;
+}
+
+.step-copy small {
+  color: var(--faint);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.tech-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 28px;
+}
+
+.tech-row span {
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(9, 13, 10, 0.5);
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.055em;
+}
+
+.tech-row span:first-child {
+  border-color: rgba(216, 255, 84, 0.19);
+  color: var(--lime);
+}
+
+.privacy-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 490px;
+  margin: 22px 0 0;
+  color: var(--faint);
+  font-size: 10.5px;
+  line-height: 1.65;
+}
+
+.privacy-line svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  stroke: var(--mint);
+  stroke-width: 1.5;
+}
+
+/* ------------------------------------------------------------------ */
+/* Workbench                                                           */
+/* ------------------------------------------------------------------ */
+
+.workbench {
+  position: relative;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel);
+  background:
+    linear-gradient(155deg, rgba(19, 26, 21, 0.98), rgba(11, 16, 13, 0.98) 55%, rgba(10, 14, 11, 0.99));
+  box-shadow:
+    0 40px 100px rgba(0, 0, 0, 0.44),
+    0 2px 0 rgba(255, 255, 255, 0.03) inset;
+  overflow: hidden;
+  animation: rise 760ms 90ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.workbench::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(216, 255, 84, 0.58), transparent);
+  pointer-events: none;
+}
+
+.panel-glow {
+  position: absolute;
+  top: -100px;
+  right: -80px;
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(216, 255, 84, 0.07), transparent 66%);
+  pointer-events: none;
+}
+
+.panel-head {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 23px 25px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-kicker {
+  margin: 0 0 5px;
+  color: var(--lime);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+
+.panel-heading h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 590;
+  letter-spacing: -0.035em;
+}
+
+.mode-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(6, 9, 7, 0.66);
+}
+
+.mode-btn {
+  position: relative;
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 11px;
+  background: transparent;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.mode-btn:hover {
+  color: var(--ink);
+}
+
+.mode-btn.is-active {
+  color: #111608;
+  background: var(--lime);
+  box-shadow: 0 2px 10px rgba(216, 255, 84, 0.12);
+}
+
+.mode-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.panel-body {
+  position: relative;
+  padding: 22px 25px 25px;
+}
+
+/* Dropzone / file card ------------------------------------------------ */
+
+.dropzone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  min-height: 124px;
+  padding: 20px;
+  border: 1px dashed rgba(231, 244, 227, 0.2);
+  border-radius: 16px;
+  background:
+    radial-gradient(360px 160px at 13% 8%, rgba(216, 255, 84, 0.055), transparent 70%),
+    rgba(7, 11, 8, 0.42);
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.dropzone:hover,
+.dropzone:focus-visible {
+  border-color: rgba(216, 255, 84, 0.45);
+  background:
+    radial-gradient(360px 160px at 13% 8%, rgba(216, 255, 84, 0.085), transparent 70%),
+    rgba(8, 12, 9, 0.58);
+}
+
+.dropzone:active {
+  transform: scale(0.997);
+}
+
+body.is-dragging .dropzone,
+body.is-dragging .file-card {
+  border-color: var(--lime);
+  border-style: solid;
+  background:
+    radial-gradient(400px 200px at 50% 0%, rgba(216, 255, 84, 0.11), transparent 74%),
+    rgba(10, 15, 10, 0.8);
+  box-shadow: 0 0 0 4px rgba(216, 255, 84, 0.05);
+}
+
+.dropzone.is-disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.drop-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(216, 255, 84, 0.2);
+  border-radius: 13px;
+  background: rgba(216, 255, 84, 0.07);
+  color: var(--lime);
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+body.is-dragging .drop-icon {
+  transform: translateY(-3px);
+  background: rgba(216, 255, 84, 0.14);
+}
+
+.drop-icon svg {
+  width: 21px;
+  height: 21px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.drop-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.drop-title {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 550;
+  letter-spacing: 0.015em;
+}
+
+.drop-hint {
+  color: var(--faint);
+  font-size: 10.8px;
+  letter-spacing: 0.01em;
+}
+
+.drop-hint i {
+  padding: 0 2px;
+  color: rgba(231, 244, 227, 0.25);
+  font-style: normal;
+}
+
+.drop-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 3px 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: 0.1em;
+}
+
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 80px;
+  padding: 14px;
+  border: 1px solid rgba(216, 255, 84, 0.18);
+  border-radius: 16px;
+  background:
+    linear-gradient(120deg, rgba(216, 255, 84, 0.045), transparent 44%),
+    rgba(7, 11, 8, 0.52);
+  animation: cardIn 240ms ease both;
+}
+
+.file-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 49px;
+  height: 49px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+}
+
+.file-icon.tone-doc { color: var(--amber); background: rgba(255, 200, 115, 0.09); border-color: rgba(255, 200, 115, 0.16); }
+.file-icon.tone-image { color: var(--mint); background: rgba(117, 229, 201, 0.08); border-color: rgba(117, 229, 201, 0.16); }
+.file-icon.tone-archive { color: var(--lime); background: rgba(216, 255, 84, 0.075); border-color: rgba(216, 255, 84, 0.16); }
+.file-icon.tone-code { color: #a9baff; background: rgba(143, 170, 255, 0.08); border-color: rgba(143, 170, 255, 0.16); }
+.file-icon.tone-media { color: #ff9bc5; background: rgba(255, 132, 180, 0.08); border-color: rgba(255, 132, 180, 0.16); }
+.file-icon.tone-other { color: #bdc7be; background: rgba(191, 203, 193, 0.06); border-color: var(--line); }
+
+.file-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.file-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 550;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 3px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 9.5px;
+}
+
+.meta-dot {
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 50%;
+  background: var(--faint);
+  opacity: 0.7;
+}
+
+.file-extra {
+  overflow: hidden;
+  margin-top: 5px;
+  color: rgba(216, 255, 84, 0.68);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+}
+
+/* Shared small controls ---------------------------------------------- */
+
+.text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+  font-size: 10.2px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease, opacity 150ms ease;
+}
+
+.text-btn svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.text-btn:hover {
+  color: var(--lime);
+  background: rgba(216, 255, 84, 0.055);
+}
+
+.text-btn:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.text-btn:disabled:hover {
+  color: var(--faint);
+  background: transparent;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-btn:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.remove-btn:hover {
+  color: var(--red);
+  background: rgba(255, 133, 123, 0.08);
+}
+
+.divider {
+  height: 1px;
+  margin: 20px 0 19px;
+  background: var(--line);
+}
+
+/* Fields ------------------------------------------------------------- */
+
+.field + .field {
+  margin-top: 16px;
+}
+
+.field-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.field-head label {
+  color: var(--ink);
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+}
+
+.field-hint {
+  color: var(--faint);
+  font-size: 9.5px;
+  text-align: right;
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: rgba(5, 8, 6, 0.52);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.input-wrap:focus-within {
+  border-color: rgba(216, 255, 84, 0.54);
+  background: rgba(5, 8, 6, 0.72);
+  box-shadow: 0 0 0 3px rgba(216, 255, 84, 0.07);
+}
+
+.input-wrap.is-invalid {
+  border-color: rgba(255, 133, 123, 0.53);
+}
+
+.input-icon {
+  position: absolute;
+  left: 13px;
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+  pointer-events: none;
+}
+
+.input-icon svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.secret-input {
+  width: 100%;
+  height: 47px;
+  padding: 0 44px 0 39px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0.015em;
+}
+
+.secret-input::placeholder {
+  color: #5e6a61;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+}
+
+.secret-input:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.reveal-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.reveal-btn {
+  position: absolute;
+  right: 7px;
+  width: 32px;
+  height: 32px;
+}
+
+.reveal-btn .eye-off {
+  display: none;
+}
+
+.reveal-btn[aria-pressed="true"] .eye-on {
+  display: none;
+}
+
+.reveal-btn[aria-pressed="true"] .eye-off {
+  display: block;
+}
+
+.field-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 7px;
+  flex-wrap: wrap;
+}
+
+.strength {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 19px;
+  color: var(--faint);
+  font-size: 9.5px;
+}
+
+.strength-bars {
+  display: flex;
+  gap: 3px;
+}
+
+.strength-bars i {
+  display: block;
+  width: 15px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(231, 244, 227, 0.12);
+  transition: background 180ms ease;
+}
+
+.strength[data-score="1"] .strength-bars i:nth-child(-n+1) { background: var(--red); }
+.strength[data-score="1"] #strengthText { color: var(--red); }
+.strength[data-score="2"] .strength-bars i:nth-child(-n+2) { background: var(--amber); }
+.strength[data-score="2"] #strengthText { color: var(--amber); }
+.strength[data-score="3"] .strength-bars i:nth-child(-n+3) { background: var(--lime); }
+.strength[data-score="3"] #strengthText { color: var(--lime); }
+.strength[data-score="4"] .strength-bars i { background: var(--lime); }
+.strength[data-score="4"] #strengthText { color: var(--lime); }
+
+.key-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.field-error {
+  margin: 7px 0 0;
+  color: var(--red);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.key-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 17px 0 18px;
+  color: var(--faint);
+  font-size: 9.7px;
+  line-height: 1.6;
+}
+
+.key-note svg {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  margin-top: 1px;
+  stroke: var(--mint);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Action ------------------------------------------------------------- */
+
+.primary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  height: 51px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--lime);
+  color: #111608;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  cursor: pointer;
+  box-shadow:
+    0 8px 28px rgba(216, 255, 84, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.38) inset;
+  transition: transform 160ms ease, filter 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.primary-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 180ms ease;
+}
+
+.primary-btn:hover:not(:disabled) {
+  filter: brightness(1.035);
+  transform: translateY(-1px);
+}
+
+.primary-btn:hover:not(:disabled) svg {
+  transform: translateX(3px);
+}
+
+.primary-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.primary-btn:disabled {
+  background: rgba(231, 244, 227, 0.075);
+  color: #69746b;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.primary-btn.is-busy {
+  background: rgba(216, 255, 84, 0.16);
+  color: var(--lime);
+}
+
+.action-note {
+  margin: 10px 0 0;
+  color: #626d64;
+  font-size: 8.8px;
+  letter-spacing: 0.035em;
+  text-align: center;
+}
+
+/* Progress ----------------------------------------------------------- */
+
+.progress-panel {
+  margin-top: 13px;
+  padding: 13px 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(5, 8, 6, 0.48);
+  animation: cardIn 180ms ease both;
+}
+
+.progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+#progressPct {
+  color: var(--lime);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+.progress-track {
+  height: 4px;
+  margin: 10px 0 9px;
+  border-radius: 999px;
+  background: rgba(231, 244, 227, 0.09);
+  overflow: hidden;
+}
+
+.progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #aeea2f, var(--lime));
+  box-shadow: 0 0 12px rgba(216, 255, 84, 0.4);
+  transition: width 180ms linear;
+}
+
+.progress-panel.is-indeterminate .progress-bar {
+  width: 34% !important;
+  animation: indeterminate 1.15s ease-in-out infinite;
+}
+
+.progress-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #667168;
+  font-size: 8.8px;
+}
+
+#cancelBtn {
+  padding: 2px 3px;
+  font-size: 9.5px;
+}
+
+/* Error -------------------------------------------------------------- */
+
+.error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 13px;
+  padding: 11px 10px 11px 12px;
+  border: 1px solid rgba(255, 133, 123, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 133, 123, 0.065);
+  color: #ffb4ad;
+  font-size: 10.5px;
+  line-height: 1.6;
+  animation: cardIn 180ms ease both;
+}
+
+.error-banner > svg {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  stroke: var(--red);
+  stroke-width: 1.55;
+  stroke-linecap: round;
+}
+
+.error-banner .icon-btn {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin: -4px -3px -4px auto;
+  color: #c1807b;
+}
+
+.error-banner .icon-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Result ------------------------------------------------------------- */
+
+.result-card {
+  position: relative;
+  margin-top: 15px;
+  padding: 19px;
+  border: 1px solid rgba(216, 255, 84, 0.22);
+  border-radius: 16px;
+  background:
+    radial-gradient(420px 200px at 0% 0%, rgba(216, 255, 84, 0.1), transparent 66%),
+    rgba(8, 13, 8, 0.64);
+  animation: resultIn 340ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.result-check {
+  display: grid;
+  place-items: center;
+  width: 37px;
+  height: 37px;
+  border-radius: 50%;
+  background: var(--lime);
+  color: #111608;
+  box-shadow: 0 0 26px rgba(216, 255, 84, 0.22);
+}
+
+.result-check svg {
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.result-eyebrow {
+  margin: 13px 0 4px;
+  color: var(--lime);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+}
+
+.result-card h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14.5px;
+  font-weight: 560;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.result-meta {
+  margin: 5px 0 14px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 9px;
+  line-height: 1.7;
+}
+
+.result-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 37px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--lime);
+  color: #111608;
+  font-size: 10.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+
+.download-btn:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.download-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.result-note {
+  margin: 11px 0 0;
+  color: #69756b;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+/* Spec --------------------------------------------------------------- */
+
+.spec {
+  border-top: 1px solid var(--line);
+  background: rgba(5, 8, 6, 0.24);
+}
+
+.spec summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 25px;
+  color: var(--faint);
+  font-size: 10.5px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+  transition: color 150ms ease;
+}
+
+.spec summary::-webkit-details-marker {
+  display: none;
+}
+
+.spec summary:hover {
+  color: var(--ink);
+}
+
+.spec summary::after {
+  content: "+";
+  order: 3;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.spec[open] summary::after {
+  content: "−";
+}
+
+.summary-meta {
+  margin-left: auto;
+  color: #59645b;
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: 0.08em;
+}
+
+.spec-body {
+  padding: 0 25px 22px;
+  animation: cardIn 200ms ease both;
+}
+
+.spec-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 10px;
+}
+
+.spec-grid > div {
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+
+.spec-grid span {
+  display: block;
+  margin-bottom: 3px;
+  color: #5f6a61;
+  font-size: 8.5px;
+}
+
+.spec-grid b {
+  display: block;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+}
+
+.spec-grid small {
+  display: block;
+  margin-top: 3px;
+  color: #5e695f;
+  font-size: 8.5px;
+  line-height: 1.5;
+}
+
+.spec-body > p {
+  margin: 13px 0 0;
+  padding-left: 10px;
+  border-left: 2px solid rgba(216, 255, 84, 0.32);
+  color: var(--faint);
+  font-size: 9.5px;
+  line-height: 1.75;
+}
+
+/* ------------------------------------------------------------------ */
+/* Footer & toast                                                      */
+/* ------------------------------------------------------------------ */
+
+.footer {
+  width: min(1240px, calc(100% - 72px));
+  margin: 0 auto;
+  padding: 18px 0 28px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  color: #5e695f;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.04em;
+}
+
+.footer b {
+  color: var(--lime);
+  font-weight: 500;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  z-index: 50;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  background: #edf3e8;
+  color: #10150c;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.36);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 14px);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ------------------------------------------------------------------ */
+/* Responsive                                                          */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 1080px) {
+  .page {
+    grid-template-columns: 1fr;
+    width: min(720px, calc(100% - 64px));
+    gap: 38px;
+    padding-top: 40px;
+  }
+
+  .intro {
+    padding-top: 6px;
+  }
+
+  .intro h1 {
+    max-width: none;
+    font-size: clamp(2.8rem, 7.2vw, 4.1rem);
+  }
+
+  .lede,
+  .steps,
+  .privacy-line {
+    max-width: 620px;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 0;
+    gap: 12px;
+  }
+
+  .steps li {
+    display: block;
+    padding: 13px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(9, 13, 10, 0.34);
+  }
+
+  .step-copy {
+    margin-top: 8px;
+  }
+
+  .footer,
+  .topbar {
+    width: min(720px, calc(100% - 64px));
+  }
+}
+
+@media (max-width: 680px) {
+  .topbar,
+  .page,
+  .footer {
+    width: calc(100% - 32px);
+  }
+
+  .topbar {
+    padding-top: 18px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  .brand-mark svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .brand-type strong {
+    font-size: 11.5px;
+  }
+
+  .brand-type em {
+    font-size: 8.5px;
+  }
+
+  .top-actions {
+    gap: 10px;
+  }
+
+  .local-pill {
+    padding: 6px 8px;
+    font-size: 9px;
+  }
+
+  .top-link {
+    display: none;
+  }
+
+  .page {
+    padding: 30px 0 56px;
+    gap: 31px;
+  }
+
+  .eyebrow {
+    margin-bottom: 17px;
+    font-size: 8px;
+  }
+
+  .intro h1 {
+    font-size: clamp(2.55rem, 11.3vw, 3.4rem);
+    letter-spacing: -0.065em;
+  }
+
+  .lede {
+    margin-top: 20px;
+    font-size: 13.6px;
+    line-height: 1.8;
+  }
+
+  .steps {
+    display: none;
+  }
+
+  .tech-row {
+    margin-top: 22px;
+    gap: 5px;
+  }
+
+  .tech-row span {
+    padding: 5px 7px;
+    font-size: 7.7px;
+  }
+
+  .privacy-line {
+    margin-top: 17px;
+    font-size: 9.7px;
+  }
+
+  .workbench {
+    border-radius: 20px;
+  }
+
+  .panel-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 18px 18px 16px;
+  }
+
+  .panel-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .panel-kicker {
+    margin: 0;
+    font-size: 7.5px;
+  }
+
+  .panel-heading h2 {
+    font-size: 18px;
+  }
+
+  .mode-switch {
+    width: 100%;
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 8px 10px;
+  }
+
+  .panel-body {
+    padding: 17px 18px 20px;
+  }
+
+  .dropzone {
+    min-height: 108px;
+    padding: 16px;
+    gap: 13px;
+  }
+
+  .drop-icon {
+    width: 43px;
+    height: 43px;
+  }
+
+  .drop-title {
+    font-size: 12.8px;
+  }
+
+  .drop-hint {
+    font-size: 9.8px;
+  }
+
+  .drop-badge {
+    display: none;
+  }
+
+  .file-card {
+    padding: 12px;
+    gap: 11px;
+  }
+
+  .file-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+    font-size: 8.5px;
+  }
+
+  .file-name {
+    font-size: 11.8px;
+  }
+
+  .divider {
+    margin: 17px 0;
+  }
+
+  .field-head label {
+    font-size: 11px;
+  }
+
+  .field-hint {
+    font-size: 8.7px;
+  }
+
+  .secret-input {
+    height: 45px;
+    font-size: 12px;
+  }
+
+  .secret-input::placeholder {
+    font-size: 10.6px;
+  }
+
+  .field-foot {
+    gap: 5px;
+  }
+
+  .key-actions {
+    gap: 0;
+  }
+
+  .text-btn {
+    font-size: 9.5px;
+    padding: 5px 5px;
+  }
+
+  .strength {
+    font-size: 8.7px;
+  }
+
+  .strength-bars i {
+    width: 11px;
+  }
+
+  .key-note {
+    font-size: 9px;
+  }
+
+  .primary-btn {
+    height: 49px;
+  }
+
+  .spec summary {
+    padding: 14px 18px;
+  }
+
+  .spec-body {
+    padding: 0 18px 18px;
+  }
+
+  .spec-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .spec-grid > div {
+    padding: 9px 0;
+  }
+
+  .footer {
+    padding-bottom: 22px;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 8px;
+  }
+
+  .ambient::after {
+    width: 180px;
+    height: 180px;
+    top: 5%;
+    right: -80px;
+  }
+
+  .toast {
+    bottom: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .panel-heading h2 {
+    font-size: 17px;
+  }
+
+  .panel-kicker {
+    display: none;
+  }
+
+  .file-extra {
+    display: none;
+  }
+
+  .result-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .download-btn {
+    justify-content: center;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Motion                                                              */
+/* ------------------------------------------------------------------ */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bootCurtain {
+  0%,
+  72% {
+    visibility: visible;
+    opacity: 1;
+  }
+  100% {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+
+@keyframes bootRise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bootScan {
+  0% {
+    transform: translateX(-115%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+@keyframes resultIn {
+  from {
+    opacity: 0;
+    transform: translateY(9px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-105%);
+  }
+  55% {
+    transform: translateX(160%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@keyframes breathe {
+  0%, 100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .boot-screen {
+    opacity: 1;
+    visibility: visible;
+    animation: bootCurtainReduced 1.8s steps(1, end) forwards !important;
+  }
+
+  .boot-mark,
+  .boot-name,
+  .boot-rule,
+  .boot-credit {
+    opacity: 1;
+    transform: none;
+    animation: none !important;
+  }
+}
+
+@keyframes bootCurtainReduced {
+  0%,
+  99% {
+    visibility: visible;
+    opacity: 1;
+  }
+  100% {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <div class="boot-screen" id="bootScreen" role="status" aria-label="ByteVeil 正在启动。made by deepseek。Token by gzh-creeper。">
+    <div class="boot-panel">
+      <span class="boot-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none">
+          <path d="M4 4h8v8H4zM20 4h8v8h-8zM4 20h8v8H4z" fill="currentColor"/>
+          <path d="M20 20h4v4h-4zM24 24h4v4h-4z" fill="currentColor" opacity=".34"/>
+        </svg>
+      </span>
+      <p class="boot-name">BYTEVEIL<span>字节帘</span></p>
+      <span class="boot-rule" aria-hidden="true"><i></i></span>
+      <p class="boot-credit boot-credit--one">made by <b>deepseek</b></p>
+      <p class="boot-credit boot-credit--two">Token by <b>gzh-creeper</b></p>
+    </div>
+  </div>
+
+  <div class="ambient" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand" aria-label="ByteVeil 字节帘">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none">
+          <path d="M4 4h8v8H4zM20 4h8v8h-8zM4 20h8v8H4z" fill="currentColor"/>
+          <path d="M20 20h4v4h-4zM24 24h4v4h-4z" fill="currentColor" opacity=".34"/>
+        </svg>
+      </span>
+      <span class="brand-type">
+        <strong>BYTEVEIL</strong>
+        <em>字节帘</em>
+      </span>
+    </div>
+    <div class="top-actions">
+      <span class="local-pill"><i aria-hidden="true"></i>本地处理 · 不上传</span>
+      <a class="top-link" href="#details">安全说明</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="intro" aria-labelledby="hero-title">
+      <p class="eyebrow"><span aria-hidden="true"></span>KEYED BINARY SCRAMBLER</p>
+      <h1 id="hero-title">把文件打乱成<br><span class="highlight">只有密钥</span><br>能读懂的样子。</h1>
+      <p class="lede">选一个文件，设一段密钥。ByteVeil 会在你的浏览器里重新编码它的每一个字节；只有同一段密钥，才能把它还原。</p>
+
+      <ol class="steps" aria-label="使用步骤">
+        <li>
+          <span class="step-no">01</span>
+          <span class="step-copy"><b>放入文件</b><small>文档、照片、压缩包、程序，不限格式</small></span>
+        </li>
+        <li>
+          <span class="step-no">02</span>
+          <span class="step-copy"><b>设置密钥</b><small>越长越难猜；它不会离开这台设备</small></span>
+        </li>
+        <li>
+          <span class="step-no">03</span>
+          <span class="step-copy"><b>下载封包</b><small>得到 .bveil 文件，通过任意渠道传输</small></span>
+        </li>
+      </ol>
+
+      <div class="tech-row" aria-label="安全参数">
+        <span>AES-256-GCM</span>
+        <span>PBKDF2 · 310,000</span>
+        <span>NO UPLOAD</span>
+      </div>
+
+      <p class="privacy-line">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M12 14.5v2"/></svg>
+        没有账号、没有服务器、没有网络请求。所有运算都在这台设备上完成。
+      </p>
+    </section>
+
+    <section class="workbench" id="workbench" aria-labelledby="workbench-title">
+      <span class="panel-glow" aria-hidden="true"></span>
+      <div class="panel-head">
+        <div class="panel-heading">
+          <p class="panel-kicker" id="panelKicker">WORKBENCH / SEAL</p>
+          <h2 id="workbench-title">封包工作台</h2>
+        </div>
+        <div class="mode-switch" role="group" aria-label="选择模式">
+          <button type="button" class="mode-btn is-active" data-mode="seal" aria-pressed="true">打乱文件</button>
+          <button type="button" class="mode-btn" data-mode="open" aria-pressed="false">还原文件</button>
+        </div>
+      </div>
+
+      <div class="panel-body">
+        <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="选择要处理的文件" aria-controls="fileInput">
+          <span class="drop-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+          </span>
+          <span class="drop-copy">
+            <span class="drop-title" id="dropTitle">把文件拖到这里</span>
+            <span class="drop-hint" id="dropHint">或点击浏览 <i>·</i> 支持任意格式</span>
+          </span>
+          <span class="drop-badge" id="dropBadge">ANY FILE</span>
+        </div>
+        <input type="file" id="fileInput" class="visually-hidden" tabindex="-1">
+
+        <div class="file-card" id="fileCard" hidden>
+          <span class="file-icon tone-other" id="fileIcon"><span id="fileExt">FILE</span></span>
+          <span class="file-info">
+            <span class="file-name" id="fileName"></span>
+            <span class="file-meta"><span id="fileSize"></span><span class="meta-dot"></span><span id="fileType"></span></span>
+            <span class="file-extra" id="fileExtra" hidden></span>
+          </span>
+          <span class="file-actions">
+            <button type="button" class="text-btn" id="changeFileBtn">更换</button>
+            <button type="button" class="icon-btn remove-btn" id="removeFileBtn" aria-label="移除文件">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+            </button>
+          </span>
+        </div>
+
+        <div class="divider" aria-hidden="true"></div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="keyInput">密钥</label>
+            <span class="field-hint" id="keyHint">建议至少 12 位</span>
+          </div>
+          <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><circle cx="8" cy="12" r="4"/><path d="M12 12h9m-3 0v3m-3-3v2"/></svg>
+            </span>
+            <input type="password" id="keyInput" class="secret-input" autocomplete="new-password" autocapitalize="off" spellcheck="false" maxlength="1024" placeholder="输入一段只有你知道的密钥">
+            <button type="button" class="icon-btn reveal-btn" id="toggleKey" aria-label="显示密钥" aria-pressed="false">
+              <svg class="eye-on" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.8 12S6.4 6 12 6s9.2 6 9.2 6-3.6 6-9.2 6S2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="2.7"/></svg>
+              <svg class="eye-off" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4 20 20M9.7 6.3A9 9 0 0 1 12 6c5.6 0 9.2 6 9.2 6a16 16 0 0 1-2.3 2.9M6.4 7.7A16 16 0 0 0 2.8 12S6.4 18 12 18c.9 0 1.7-.2 2.5-.4"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+            </button>
+          </div>
+          <div class="field-foot">
+            <div class="strength" id="strength" aria-live="polite">
+              <span class="strength-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <span id="strengthText">尚未输入</span>
+            </div>
+            <div class="key-actions">
+              <button type="button" class="text-btn" id="generateKeyBtn">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1"/></svg>
+                生成随机密钥
+              </button>
+              <button type="button" class="text-btn" id="copyKeyBtn" disabled>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2"/></svg>
+                复制
+              </button>
+            </div>
+          </div>
+          <p class="field-error" id="keyError" hidden></p>
+        </div>
+
+        <div class="field" id="confirmGroup">
+          <div class="field-head">
+            <label for="confirmInput">确认密钥</label>
+            <span class="field-hint">再输入一次，防止打错</span>
+          </div>
+          <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="m9.5 15.4 1.7 1.7 3.4-3.5"/></svg>
+            </span>
+            <input type="password" id="confirmInput" class="secret-input" autocomplete="new-password" autocapitalize="off" spellcheck="false" maxlength="1024" placeholder="再次输入同一段密钥">
+            <button type="button" class="icon-btn reveal-btn" id="toggleConfirm" aria-label="显示确认密钥" aria-pressed="false">
+              <svg class="eye-on" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.8 12S6.4 6 12 6s9.2 6 9.2 6-3.6 6-9.2 6S2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="2.7"/></svg>
+              <svg class="eye-off" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4 20 20M9.7 6.3A9 9 0 0 1 12 6c5.6 0 9.2 6 9.2 6a16 16 0 0 1-2.3 2.9M6.4 7.7A16 16 0 0 0 2.8 12S6.4 18 12 18c.9 0 1.7-.2 2.5-.4"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+            </button>
+          </div>
+          <p class="field-error" id="confirmError" hidden></p>
+        </div>
+
+        <p class="key-note">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.5 3.1 7.7 7.5 9.5 4.4-1.8 7.5-5 7.5-9.5V6L12 3Z"/><path d="M12 8v4m0 3h.01"/></svg>
+          <span id="keyNoteText">密钥不会被保存或上传。忘记密钥，文件将无法恢复。</span>
+        </p>
+
+        <button type="button" class="primary-btn" id="actionBtn" disabled>
+          <span id="actionLabel">打乱并封包</span>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>
+        </button>
+
+        <div class="progress-panel" id="progressPanel" hidden>
+          <div class="progress-head">
+            <span id="progressLabel">正在准备…</span>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="progress-track" id="progressTrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="处理进度">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="progress-foot">
+            <span id="progressDetail">文件只在这台设备上处理</span>
+            <button type="button" class="text-btn" id="cancelBtn">取消</button>
+          </div>
+        </div>
+
+        <div class="error-banner" id="errorBanner" hidden role="alert">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 3.5h.01"/></svg>
+          <span id="errorText"></span>
+          <button type="button" class="icon-btn" id="errorClose" aria-label="关闭错误提示">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+
+        <div class="result-card" id="resultCard" hidden aria-live="polite">
+          <span class="result-check" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+          </span>
+          <p class="result-eyebrow" id="resultEyebrow">封包完成</p>
+          <h3 id="resultName"></h3>
+          <p class="result-meta" id="resultMeta"></p>
+          <div class="result-actions">
+            <button type="button" class="download-btn" id="downloadBtn">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v12m0 0 5-5m-5 5-5-5"/><path d="M4 19h16"/></svg>
+              <span id="downloadLabel">下载封包</span>
+            </button>
+            <button type="button" class="text-btn" id="clearResultBtn">清除结果</button>
+          </div>
+          <p class="result-note" id="resultNote"></p>
+        </div>
+
+        <p class="action-note" id="actionNote">本地处理 · AES-256-GCM 认证加密</p>
+      </div>
+
+      <details class="spec" id="details">
+        <summary>
+          <span>封包内部是怎么做的？</span>
+          <span class="summary-meta">FORMAT v1</span>
+        </summary>
+        <div class="spec-body">
+          <div class="spec-grid">
+            <div><span>内容加密</span><b>AES-256-GCM</b><small>每块独立认证，篡改会被发现</small></div>
+            <div><span>密钥派生</span><b>PBKDF2-SHA-256</b><small>310,000 次迭代 + 随机 salt</small></div>
+            <div><span>分块大小</span><b>4 MiB</b><small>逐块处理，可显示进度</small></div>
+            <div><span>封包内容</span><b>文件名 · 大小 · 时间</b><small>元数据一并纳入认证</small></div>
+            <div><span>随机参数</span><b>Salt + IV</b><small>每个封包都不同</small></div>
+            <div><span>网络请求</span><b>0</b><small>没有上传、统计或外部资源</small></div>
+          </div>
+          <p>ByteVeil 不是把字节简单换位，而是用密钥进行认证加密。原始文件名、大小和时间保存在封包头中，便于还原并受完整性认证保护；文件内容本身完全加密。丢失密钥后没有后门或找回方式，请把密钥和封包分开保管。</p>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>BYTEVEIL <b>v1.0</b></span>
+    <span>在本机完成全部运算 · 不提供密码找回</span>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <p class="visually-hidden" id="srStatus" role="status" aria-live="polite"></p>
+
+  <script>
+/*
+ * ByteVeil format v1
+ * ------------------------------------------------------------------
+ * A tiny, dependency-free container for password-protected files.
+ *
+ *   header (authenticated as AES-GCM additional data)
+ *     magic        8   "BYTEVEIL"
+ *     version      1   1
+ *     kdf          1   1 = PBKDF2-SHA-256
+ *     cipher       1   1 = AES-256-GCM
+ *     reserved     1   0
+ *     iterations   4   big-endian uint32
+ *     chunk size   4   big-endian uint32
+ *     file size    8   big-endian uint64
+ *     created at   8   big-endian uint64 (unix ms)
+ *     salt        16
+ *     base IV     12
+ *     name length  2   big-endian uint16
+ *     name         n   UTF-8
+ *
+ *   chunks
+ *     length       4   big-endian uint32 (ciphertext + 16 byte tag)
+ *     ciphertext   n
+ *
+ * Each chunk uses IV = base IV with its uint32 index written into the
+ * final four bytes, and authenticates the header + chunk index + total
+ * chunk count as additional data. This makes chunk reordering, swapping
+ * between packages, and truncation detectable.
+ *
+ * This is encryption, not a toy byte shuffle. The result is only as
+ * strong as the password chosen by the user.
+ */
+(function (root, factory) {
+  'use strict';
+  var api = factory(root);
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.ByteVeil = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (root) {
+  'use strict';
+
+  var MAGIC = new Uint8Array([0x42, 0x59, 0x54, 0x45, 0x56, 0x45, 0x49, 0x4c]); // BYTEVEIL
+  var VERSION = 1;
+  var KDF_ID = 1;
+  var CIPHER_ID = 1;
+  var HEADER_FIXED = 66;
+  var DEFAULT_ITERATIONS = 310000;
+  var MIN_ITERATIONS = 50000;
+  var MAX_ITERATIONS = 2000000;
+  var DEFAULT_CHUNK_SIZE = 4 * 1024 * 1024;
+  var MIN_CHUNK_SIZE = 64 * 1024;
+  var MAX_CHUNK_SIZE = 32 * 1024 * 1024;
+  var TAG_BYTES = 16;
+  var SALT_BYTES = 16;
+  var IV_BYTES = 12;
+  var MAX_FILENAME_BYTES = 1024;
+  var MAX_FILE_SIZE = 1024 * 1024 * 1024 * 1024; // 1 TiB
+  var MAX_CHUNKS = 1000000;
+  var KEY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%+-=?';
+
+  var encoder = new TextEncoder();
+  var decoder = new TextDecoder('utf-8', { fatal: true });
+
+  function ByteVeilError(code, message, cause) {
+    var err = Error.call(this, message);
+    this.name = 'ByteVeilError';
+    this.message = message || 'ByteVeil error';
+    this.code = code || 'ERROR';
+    if (cause) this.cause = cause;
+    if (Error.captureStackTrace) Error.captureStackTrace(this, ByteVeilError);
+    else this.stack = err.stack;
+  }
+  ByteVeilError.prototype = Object.create(Error.prototype);
+  ByteVeilError.prototype.constructor = ByteVeilError;
+
+  function fail(code, message, cause) {
+    throw new ByteVeilError(code, message, cause);
+  }
+
+  function subtle() {
+    var c = root && (root.crypto || root.msCrypto);
+    if (!c || !c.subtle) {
+      fail('CRYPTO_UNAVAILABLE', '当前环境不支持 Web Crypto。请使用较新的 Chrome、Edge、Firefox 或 Safari。');
+    }
+    return c.subtle;
+  }
+
+  function randomBytes(length) {
+    var c = root && (root.crypto || root.msCrypto);
+    if (!c || typeof c.getRandomValues !== 'function') {
+      fail('CRYPTO_UNAVAILABLE', '无法访问安全随机数生成器。');
+    }
+    var out = new Uint8Array(length);
+    c.getRandomValues(out);
+    return out;
+  }
+
+  function assertBlob(blob) {
+    if (!blob || typeof blob.slice !== 'function' || typeof blob.arrayBuffer !== 'function' || typeof blob.size !== 'number') {
+      fail('INVALID_FILE', '没有可读取的文件。');
+    }
+  }
+
+  function normalizePassword(password) {
+    if (typeof password !== 'string' || password.length === 0) {
+      fail('PASSWORD_REQUIRED', '请输入密钥。');
+    }
+    if (password.length > 1024) {
+      fail('PASSWORD_TOO_LONG', '密钥过长，请控制在 1024 个字符以内。');
+    }
+    return password.normalize('NFC');
+  }
+
+  function assertNotAborted(signal) {
+    if (signal && signal.aborted) {
+      fail('ABORTED', '操作已取消。');
+    }
+  }
+
+  function emit(onProgress, payload) {
+    if (typeof onProgress !== 'function') return;
+    try {
+      onProgress(payload);
+    } catch (_) {
+      /* A UI callback must never break an in-flight operation. */
+    }
+  }
+
+  function nextTask() {
+    return new Promise(function (resolve) { setTimeout(resolve, 0); });
+  }
+
+  function sanitizeFileName(name) {
+    var clean = String(name == null ? '' : name)
+      .replace(/[\u0000-\u001f\u007f]/g, '_')
+      .replace(/[\\/]/g, '_')
+      .trim();
+
+    if (!clean || clean === '.' || clean === '..') clean = 'file.bin';
+
+    if (encoder.encode(clean).length > MAX_FILENAME_BYTES) {
+      var dot = clean.lastIndexOf('.');
+      var ext = dot > 0 && clean.length - dot <= 17 ? clean.slice(dot) : '';
+      var stem = ext ? clean.slice(0, dot) : clean;
+      var chars = Array.from(stem);
+      var budget = MAX_FILENAME_BYTES - encoder.encode(ext).length;
+      while (chars.length > 0 && encoder.encode(chars.join('')).length > budget) chars.pop();
+      clean = (chars.join('') || 'file') + ext;
+    }
+    return clean;
+  }
+
+  function hasMagic(bytes) {
+    if (!bytes) return false;
+    var view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    if (view.length < MAGIC.length) return false;
+    for (var i = 0; i < MAGIC.length; i++) {
+      if (view[i] !== MAGIC[i]) return false;
+    }
+    return true;
+  }
+
+  function parseFixed(bytes) {
+    if (!(bytes instanceof Uint8Array) || bytes.length < HEADER_FIXED) {
+      fail('INVALID_FORMAT', '文件头不完整，这不是有效的 ByteVeil 封包。');
+    }
+    if (!hasMagic(bytes)) {
+      fail('INVALID_FORMAT', '找不到 ByteVeil 标记，这不是本工具生成的封包。');
+    }
+
+    var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    var version = view.getUint8(8);
+    if (version !== VERSION) {
+      fail('UNSUPPORTED_VERSION', '暂不支持这个封包版本（v' + version + '）。');
+    }
+    if (view.getUint8(9) !== KDF_ID || view.getUint8(10) !== CIPHER_ID) {
+      fail('UNSUPPORTED_FORMAT', '封包使用了不受支持的加密参数。');
+    }
+
+    var iterations = view.getUint32(12, false);
+    if (iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) {
+      fail('INVALID_FORMAT', '封包的密钥派生参数不在安全范围内。');
+    }
+
+    var chunkSize = view.getUint32(16, false);
+    if (chunkSize < MIN_CHUNK_SIZE || chunkSize > MAX_CHUNK_SIZE || chunkSize % 1024 !== 0) {
+      fail('INVALID_FORMAT', '封包的分块大小无效。');
+    }
+
+    var originalSize = Number(view.getBigUint64(20, false));
+    if (!Number.isSafeInteger(originalSize) || originalSize < 0 || originalSize > MAX_FILE_SIZE) {
+      fail('INVALID_FORMAT', '封包声明的文件大小无效。');
+    }
+
+    var createdAtRaw = view.getBigUint64(28, false);
+    var createdAt = Number(createdAtRaw);
+    if (!Number.isSafeInteger(createdAt) || createdAt <= 0) createdAt = 0;
+
+    var nameLength = view.getUint16(64, false);
+    if (nameLength > MAX_FILENAME_BYTES) {
+      fail('INVALID_FORMAT', '封包中的文件名长度异常。');
+    }
+
+    var totalChunks = originalSize === 0 ? 1 : Math.ceil(originalSize / chunkSize);
+    if (!Number.isSafeInteger(totalChunks) || totalChunks < 1 || totalChunks > MAX_CHUNKS) {
+      fail('INVALID_FORMAT', '封包的分块数量超出支持范围。');
+    }
+
+    return {
+      version: version,
+      iterations: iterations,
+      chunkSize: chunkSize,
+      originalSize: originalSize,
+      createdAt: createdAt,
+      nameLength: nameLength,
+      totalChunks: totalChunks,
+      salt: bytes.slice(36, 52),
+      baseIv: bytes.slice(52, 64),
+      headerLength: HEADER_FIXED + nameLength
+    };
+  }
+
+  function parseHeader(bytes) {
+    var fixed = parseFixed(bytes);
+    if (bytes.length < fixed.headerLength) {
+      fail('INVALID_FORMAT', '文件头不完整，这不是有效的 ByteVeil 封包。');
+    }
+
+    var nameBytes = bytes.slice(HEADER_FIXED, fixed.headerLength);
+    var originalName;
+    try {
+      originalName = decoder.decode(nameBytes);
+    } catch (err) {
+      fail('INVALID_FORMAT', '封包中的文件名编码无效。', err);
+    }
+    originalName = sanitizeFileName(originalName);
+
+    var expectedPackageSize =
+      fixed.headerLength +
+      fixed.totalChunks * 4 +
+      fixed.originalSize +
+      fixed.totalChunks * TAG_BYTES;
+
+    if (!Number.isSafeInteger(expectedPackageSize)) {
+      fail('INVALID_FORMAT', '封包体积超出支持范围。');
+    }
+
+    return {
+      version: fixed.version,
+      kdf: 'PBKDF2-SHA-256',
+      cipher: 'AES-256-GCM',
+      iterations: fixed.iterations,
+      chunkSize: fixed.chunkSize,
+      originalSize: fixed.originalSize,
+      createdAt: fixed.createdAt,
+      totalChunks: fixed.totalChunks,
+      originalName: originalName,
+      headerLength: fixed.headerLength,
+      expectedPackageSize: expectedPackageSize
+    };
+  }
+
+  async function readHeader(blob) {
+    assertBlob(blob);
+    if (blob.size < HEADER_FIXED) {
+      fail('INVALID_FORMAT', '文件太小，不是有效的 ByteVeil 封包。');
+    }
+
+    var fixedBytes = new Uint8Array(await blob.slice(0, HEADER_FIXED).arrayBuffer());
+    if (fixedBytes.length < HEADER_FIXED) {
+      fail('INVALID_FORMAT', '文件头不完整，这不是有效的 ByteVeil 封包。');
+    }
+    var fixed = parseFixed(fixedBytes);
+    if (blob.size < fixed.headerLength) {
+      fail('INVALID_FORMAT', '文件头不完整，这不是有效的 ByteVeil 封包。');
+    }
+
+    var headerBytes = new Uint8Array(await blob.slice(0, fixed.headerLength).arrayBuffer());
+    if (headerBytes.length !== fixed.headerLength) {
+      fail('INVALID_FORMAT', '文件头不完整，这不是有效的 ByteVeil 封包。');
+    }
+    var info = parseHeader(headerBytes);
+    if (blob.size !== info.expectedPackageSize) {
+      fail('INVALID_FORMAT', '封包大小与文件头不一致，文件可能被截断或追加了数据。');
+    }
+
+    return { info: info, headerBytes: headerBytes };
+  }
+
+  function makeHeader(info) {
+    var header = new Uint8Array(HEADER_FIXED + info.nameBytes.length);
+    header.set(MAGIC, 0);
+    header[8] = VERSION;
+    header[9] = KDF_ID;
+    header[10] = CIPHER_ID;
+    header[11] = 0;
+
+    var view = new DataView(header.buffer);
+    view.setUint32(12, info.iterations, false);
+    view.setUint32(16, info.chunkSize, false);
+    view.setBigUint64(20, BigInt(info.originalSize), false);
+    view.setBigUint64(28, BigInt(info.createdAt), false);
+    header.set(info.salt, 36);
+    header.set(info.baseIv, 52);
+    view.setUint16(64, info.nameBytes.length, false);
+    header.set(info.nameBytes, HEADER_FIXED);
+    return header;
+  }
+
+  function chunkIv(baseIv, index) {
+    var iv = new Uint8Array(baseIv);
+    var view = new DataView(iv.buffer);
+    view.setUint32(8, index, false);
+    return iv;
+  }
+
+  function chunkAad(headerBytes, index, totalChunks) {
+    var aad = new Uint8Array(headerBytes.length + 8);
+    aad.set(headerBytes, 0);
+    var view = new DataView(aad.buffer, headerBytes.length, 8);
+    view.setUint32(0, index, false);
+    view.setUint32(4, totalChunks, false);
+    return aad;
+  }
+
+  async function deriveKey(password, salt, iterations, usage) {
+    var raw = encoder.encode(password);
+    var material = await subtle().importKey('raw', raw, 'PBKDF2', false, ['deriveKey']);
+    return subtle().deriveKey(
+      { name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' },
+      material,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      [usage]
+    );
+  }
+
+  async function sealBlob(blob, password, options) {
+    assertBlob(blob);
+    options = options || {};
+    var normalized = normalizePassword(password);
+    subtle();
+
+    if (blob.size > MAX_FILE_SIZE) {
+      fail('FILE_TOO_LARGE', '文件超过 1 TiB，当前格式不支持。');
+    }
+
+    var signal = options.signal;
+    var onProgress = options.onProgress;
+    assertNotAborted(signal);
+
+    var originalName = sanitizeFileName(blob.name || 'file.bin');
+    var nameBytes = encoder.encode(originalName);
+    var salt = randomBytes(SALT_BYTES);
+    var baseIv = randomBytes(IV_BYTES);
+    var createdAt = Date.now();
+    var chunkSize = DEFAULT_CHUNK_SIZE;
+    var totalChunks = blob.size === 0 ? 1 : Math.ceil(blob.size / chunkSize);
+    var headerBytes = makeHeader({
+      salt: salt,
+      baseIv: baseIv,
+      iterations: DEFAULT_ITERATIONS,
+      chunkSize: chunkSize,
+      originalSize: blob.size,
+      createdAt: createdAt,
+      nameBytes: nameBytes
+    });
+    var info = parseHeader(headerBytes);
+    info.originalName = originalName;
+    info.packageSize = info.expectedPackageSize;
+
+    emit(onProgress, { phase: 'derive', progress: 0.01, mode: 'seal' });
+    var key = await deriveKey(normalized, salt, DEFAULT_ITERATIONS, 'encrypt');
+    assertNotAborted(signal);
+    emit(onProgress, {
+      phase: 'process',
+      progress: 0.06,
+      mode: 'seal',
+      done: 0,
+      total: totalChunks
+    });
+
+    var parts = [headerBytes];
+
+    for (var index = 0; index < totalChunks; index++) {
+      assertNotAborted(signal);
+
+      var start = index * chunkSize;
+      var end = Math.min(start + chunkSize, blob.size);
+      var expectedLength = end - start;
+      var plainBuffer = await blob.slice(start, end).arrayBuffer();
+      if (plainBuffer.byteLength !== expectedLength) {
+        fail('DATA_CHANGED', '读取文件时文件大小发生了变化，请重新选择文件。');
+      }
+
+      var encrypted;
+      try {
+        encrypted = await subtle().encrypt(
+          {
+            name: 'AES-GCM',
+            iv: chunkIv(baseIv, index),
+            additionalData: chunkAad(headerBytes, index, totalChunks),
+            tagLength: 128
+          },
+          key,
+          plainBuffer
+        );
+      } catch (err) {
+        fail('ENCRYPT_FAILED', '加密失败，请重试。', err);
+      }
+
+      var lengthBuffer = new ArrayBuffer(4);
+      new DataView(lengthBuffer).setUint32(0, encrypted.byteLength, false);
+      parts.push(lengthBuffer, encrypted);
+
+      var progress = 0.06 + 0.94 * ((index + 1) / totalChunks);
+      emit(onProgress, {
+        phase: 'process',
+        progress: progress,
+        mode: 'seal',
+        done: index + 1,
+        total: totalChunks
+      });
+
+      if (index % 2 === 1) await nextTask();
+      assertNotAborted(signal);
+    }
+
+    var output = new Blob(parts, { type: 'application/octet-stream' });
+    emit(onProgress, { phase: 'done', progress: 1, mode: 'seal', done: totalChunks, total: totalChunks });
+
+    return {
+      blob: output,
+      filename: originalName + '.bveil',
+      info: info
+    };
+  }
+
+  async function openBlob(blob, password, options) {
+    assertBlob(blob);
+    options = options || {};
+    var normalized = normalizePassword(password);
+    subtle();
+
+    var signal = options.signal;
+    var onProgress = options.onProgress;
+    assertNotAborted(signal);
+
+    var header = await readHeader(blob);
+    var info = header.info;
+    var headerBytes = header.headerBytes;
+    var totalChunks = info.totalChunks;
+    var chunkSize = info.chunkSize;
+
+    emit(onProgress, { phase: 'derive', progress: 0.01, mode: 'open' });
+    var key = await deriveKey(normalized, headerBytes.slice(36, 52), info.iterations, 'decrypt');
+    assertNotAborted(signal);
+    emit(onProgress, {
+      phase: 'process',
+      progress: 0.06,
+      mode: 'open',
+      done: 0,
+      total: totalChunks
+    });
+
+    var parts = [];
+    var offset = info.headerLength;
+
+    for (var index = 0; index < totalChunks; index++) {
+      assertNotAborted(signal);
+
+      if (offset + 4 > blob.size) {
+        fail('INVALID_FORMAT', '封包数据不完整。');
+      }
+      var lengthBytes = await blob.slice(offset, offset + 4).arrayBuffer();
+      offset += 4;
+      if (lengthBytes.byteLength !== 4) {
+        fail('INVALID_FORMAT', '封包数据不完整。');
+      }
+      var cipherLength = new DataView(lengthBytes).getUint32(0, false);
+
+      var plainLength = index === totalChunks - 1
+        ? info.originalSize - index * chunkSize
+        : chunkSize;
+      if (cipherLength !== plainLength + TAG_BYTES) {
+        fail('INVALID_FORMAT', '封包分块长度异常。');
+      }
+      if (offset + cipherLength > blob.size) {
+        fail('INVALID_FORMAT', '封包数据不完整。');
+      }
+
+      var ciphertext = await blob.slice(offset, offset + cipherLength).arrayBuffer();
+      offset += cipherLength;
+      if (ciphertext.byteLength !== cipherLength) {
+        fail('INVALID_FORMAT', '封包数据不完整。');
+      }
+
+      var plain;
+      try {
+        plain = await subtle().decrypt(
+          {
+            name: 'AES-GCM',
+            iv: chunkIv(headerBytes.slice(52, 64), index),
+            additionalData: chunkAad(headerBytes, index, totalChunks),
+            tagLength: 128
+          },
+          key,
+          ciphertext
+        );
+      } catch (err) {
+        fail('WRONG_KEY', '密钥不正确，或封包已损坏。', err);
+      }
+
+      if (plain.byteLength !== plainLength) {
+        fail('INVALID_FORMAT', '还原后的数据长度异常。');
+      }
+      parts.push(plain);
+
+      var progress = 0.06 + 0.94 * ((index + 1) / totalChunks);
+      emit(onProgress, {
+        phase: 'process',
+        progress: progress,
+        mode: 'open',
+        done: index + 1,
+        total: totalChunks
+      });
+
+      if (index % 2 === 1) await nextTask();
+      assertNotAborted(signal);
+    }
+
+    if (offset !== blob.size) {
+      fail('INVALID_FORMAT', '封包末尾存在多余数据。');
+    }
+
+    var output = new Blob(parts, { type: 'application/octet-stream' });
+    emit(onProgress, { phase: 'done', progress: 1, mode: 'open', done: totalChunks, total: totalChunks });
+
+    return {
+      blob: output,
+      filename: sanitizeFileName(info.originalName || 'restored.bin'),
+      info: info
+    };
+  }
+
+  async function inspectBlob(blob) {
+    var header = await readHeader(blob);
+    return Object.assign({}, header.info, { packageSize: blob.size });
+  }
+
+  function randomKey(length) {
+    var count = length == null ? 28 : Math.floor(Number(length));
+    if (!Number.isFinite(count) || count < 8 || count > 256) {
+      fail('INVALID_LENGTH', '随机密钥长度应在 8 到 256 之间。');
+    }
+    var out = '';
+    var limit = 256 - (256 % KEY_ALPHABET.length);
+    while (out.length < count) {
+      var bytes = randomBytes(64);
+      for (var i = 0; i < bytes.length && out.length < count; i++) {
+        if (bytes[i] < limit) out += KEY_ALPHABET[bytes[i] % KEY_ALPHABET.length];
+      }
+    }
+    return out;
+  }
+
+  return {
+    ByteVeilError: ByteVeilError,
+    isContainer: hasMagic,
+    hasMagic: hasMagic,
+    sealBlob: sealBlob,
+    openBlob: openBlob,
+    inspectBlob: inspectBlob,
+    randomKey: randomKey,
+    sanitizeFileName: sanitizeFileName,
+    constants: Object.freeze({
+      VERSION: VERSION,
+      DEFAULT_ITERATIONS: DEFAULT_ITERATIONS,
+      DEFAULT_CHUNK_SIZE: DEFAULT_CHUNK_SIZE,
+      MAX_FILE_SIZE: MAX_FILE_SIZE,
+      MAGIC: 'BYTEVEIL'
+    })
+  };
+});
+
+</script>
+  <script>
+(function () {
+  'use strict';
+
+  var V = window.ByteVeil;
+  var $ = function (id) { return document.getElementById(id); };
+
+  var el = {
+    modeBtns: Array.prototype.slice.call(document.querySelectorAll('.mode-btn')),
+    dropzone: $('dropzone'),
+    fileInput: $('fileInput'),
+    fileCard: $('fileCard'),
+    fileIcon: $('fileIcon'),
+    fileExt: $('fileExt'),
+    fileName: $('fileName'),
+    fileSize: $('fileSize'),
+    fileType: $('fileType'),
+    fileExtra: $('fileExtra'),
+    changeFileBtn: $('changeFileBtn'),
+    removeFileBtn: $('removeFileBtn'),
+    panelKicker: $('panelKicker'),
+    workbenchTitle: $('workbench-title'),
+    dropTitle: $('dropTitle'),
+    dropHint: $('dropHint'),
+    dropBadge: $('dropBadge'),
+    keyInput: $('keyInput'),
+    confirmGroup: $('confirmGroup'),
+    confirmInput: $('confirmInput'),
+    toggleKey: $('toggleKey'),
+    toggleConfirm: $('toggleConfirm'),
+    keyHint: $('keyHint'),
+    strength: $('strength'),
+    strengthText: $('strengthText'),
+    keyError: $('keyError'),
+    confirmError: $('confirmError'),
+    keyNoteText: $('keyNoteText'),
+    generateKeyBtn: $('generateKeyBtn'),
+    copyKeyBtn: $('copyKeyBtn'),
+    actionBtn: $('actionBtn'),
+    actionLabel: $('actionLabel'),
+    actionNote: $('actionNote'),
+    progressPanel: $('progressPanel'),
+    progressLabel: $('progressLabel'),
+    progressPct: $('progressPct'),
+    progressTrack: $('progressTrack'),
+    progressBar: $('progressBar'),
+    progressDetail: $('progressDetail'),
+    cancelBtn: $('cancelBtn'),
+    errorBanner: $('errorBanner'),
+    errorText: $('errorText'),
+    errorClose: $('errorClose'),
+    resultCard: $('resultCard'),
+    resultEyebrow: $('resultEyebrow'),
+    resultName: $('resultName'),
+    resultMeta: $('resultMeta'),
+    resultNote: $('resultNote'),
+    downloadBtn: $('downloadBtn'),
+    downloadLabel: $('downloadLabel'),
+    clearResultBtn: $('clearResultBtn'),
+    toast: $('toast'),
+    srStatus: $('srStatus')
+  };
+
+  var COPY = {
+    seal: {
+      kicker: 'WORKBENCH / SEAL',
+      title: '封包工作台',
+      dropTitle: '把文件拖到这里',
+      dropHint: '或点击浏览 <i>·</i> 支持任意格式',
+      dropBadge: 'ANY FILE',
+      dropAria: '选择要打乱并封包的文件',
+      keyHint: '建议至少 12 位',
+      placeholder: '输入一段只有你知道的密钥',
+      action: '打乱并封包',
+      actionNote: '本地处理 · AES-256-GCM 认证加密',
+      keyNote: '密钥不会被保存或上传。忘记密钥，文件将无法恢复。'
+    },
+    open: {
+      kicker: 'WORKBENCH / OPEN',
+      title: '解包工作台',
+      dropTitle: '把 .bveil 封包拖到这里',
+      dropHint: '或点击浏览 <i>·</i> 按内容识别，扩展名可改',
+      dropBadge: 'BVEIL',
+      dropAria: '选择要还原的 ByteVeil 封包',
+      keyHint: '输入封包时使用的密钥',
+      placeholder: '输入这段封包的密钥',
+      action: '还原文件',
+      actionNote: '本地处理 · 认证通过后才会输出文件',
+      keyNote: '密钥不正确时不会产生任何文件。所有过程都在本机完成。'
+    }
+  };
+
+  var state = {
+    mode: 'seal',
+    file: null,
+    packageInfo: null,
+    result: null,
+    resultUrl: null,
+    busy: false,
+    selecting: false,
+    reveal: false,
+    unavailable: false,
+    abortController: null,
+    toastTimer: null,
+    dragDepth: 0
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+
+  function init() {
+    scheduleBootRemoval();
+    bindEvents();
+
+    if (!V) {
+      state.unavailable = true;
+      disableEverything('核心脚本没有加载成功。请确认 veil.js 与 index.html 在同一个文件夹中。');
+    } else if (!window.crypto || !window.crypto.subtle) {
+      state.unavailable = true;
+      disableEverything('当前浏览器不支持 Web Crypto，无法安全处理文件。请使用较新的 Chrome、Edge、Firefox 或 Safari，并直接打开本地文件。');
+    }
+
+    applyModeCopy();
+    setReveal(false);
+    updateStrength();
+    updateAction();
+  }
+
+  function bindEvents() {
+    el.modeBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var mode = btn.getAttribute('data-mode');
+        if (mode && mode !== state.mode) switchMode(mode);
+      });
+    });
+
+    el.dropzone.addEventListener('click', openFilePicker);
+    el.dropzone.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openFilePicker();
+      }
+    });
+
+    el.fileInput.addEventListener('change', function () {
+      var file = el.fileInput.files && el.fileInput.files[0];
+      el.fileInput.value = '';
+      if (file) selectFile(file);
+    });
+
+    el.changeFileBtn.addEventListener('click', openFilePicker);
+    el.removeFileBtn.addEventListener('click', removeFile);
+
+    el.keyInput.addEventListener('input', handleKeyInput);
+    el.confirmInput.addEventListener('input', handleConfirmInput);
+    el.keyInput.addEventListener('keydown', onSecretKeydown);
+    el.confirmInput.addEventListener('keydown', onSecretKeydown);
+
+    el.toggleKey.addEventListener('click', function () { setReveal(!state.reveal); });
+    el.toggleConfirm.addEventListener('click', function () { setReveal(!state.reveal); });
+    el.generateKeyBtn.addEventListener('click', generateKey);
+    el.copyKeyBtn.addEventListener('click', copyKey);
+    el.actionBtn.addEventListener('click', requestAction);
+    el.cancelBtn.addEventListener('click', cancelOperation);
+    el.errorClose.addEventListener('click', clearError);
+
+    el.downloadBtn.addEventListener('click', downloadResult);
+    el.clearResultBtn.addEventListener('click', function () {
+      if (state.busy) return;
+      clearResult();
+      updateAction();
+      showToast('已清除结果');
+      window.requestAnimationFrame(function () {
+        if (!el.actionBtn.hidden) el.actionBtn.focus();
+      });
+    });
+
+    var securityLink = document.querySelector('.top-link');
+    if (securityLink) {
+      securityLink.addEventListener('click', function () {
+        var details = document.getElementById('details');
+        if (details) details.open = true;
+      });
+    }
+
+    window.addEventListener('dragenter', onDragEnter);
+    window.addEventListener('dragover', onDragOver);
+    window.addEventListener('dragleave', onDragLeave);
+    window.addEventListener('drop', onDrop);
+    window.addEventListener('blur', resetDrag);
+    window.addEventListener('beforeunload', onBeforeUnload);
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && !state.busy) setReveal(false);
+    });
+  }
+
+  function scheduleBootRemoval() {
+    var bootScreen = $('bootScreen');
+    if (!bootScreen) return;
+    var delay = prefersReducedMotion() ? 1300 : 2800;
+    window.setTimeout(function () {
+      if (bootScreen.parentNode) bootScreen.remove();
+    }, delay);
+  }
+
+  function disableEverything(message) {
+    el.actionBtn.disabled = true;
+    el.generateKeyBtn.disabled = true;
+    el.copyKeyBtn.disabled = true;
+    el.dropzone.setAttribute('aria-disabled', 'true');
+    el.dropzone.tabIndex = -1;
+    showError(message, { scroll: false });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Mode and copy                                                       */
+  /* ------------------------------------------------------------------ */
+
+  function switchMode(mode, options) {
+    options = options || {};
+    if ((mode !== 'seal' && mode !== 'open') || mode === state.mode) return;
+    if (state.busy) return;
+
+    state.mode = mode;
+    clearFileState();
+    clearResult();
+    clearError();
+    clearFieldErrors();
+    setReveal(false);
+    applyModeCopy();
+    updateStrength();
+    updateAction();
+    announce(mode === 'seal' ? '已切换到打乱文件模式' : '已切换到还原文件模式');
+    if (!options.silent) showToast(mode === 'seal' ? '模式：打乱文件' : '模式：还原文件');
+  }
+
+  function applyModeCopy() {
+    var copy = COPY[state.mode];
+
+    el.panelKicker.textContent = copy.kicker;
+    el.workbenchTitle.textContent = copy.title;
+    el.dropTitle.textContent = copy.dropTitle;
+    el.dropHint.innerHTML = copy.dropHint;
+    el.dropBadge.textContent = copy.dropBadge;
+    el.dropzone.setAttribute('aria-label', copy.dropAria);
+
+    el.keyHint.textContent = copy.keyHint;
+    el.keyInput.placeholder = copy.placeholder;
+    el.keyInput.autocomplete = state.mode === 'seal' ? 'new-password' : 'current-password';
+    el.confirmInput.autocomplete = 'new-password';
+    el.keyNoteText.textContent = copy.keyNote;
+    el.actionNote.textContent = copy.actionNote;
+    if (!state.busy) el.actionLabel.textContent = copy.action;
+
+    el.confirmGroup.hidden = state.mode !== 'seal';
+    el.generateKeyBtn.hidden = state.mode !== 'seal';
+    el.strength.hidden = state.mode !== 'seal';
+
+    el.modeBtns.forEach(function (btn) {
+      var active = btn.getAttribute('data-mode') === state.mode;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+
+    document.body.setAttribute('data-mode', state.mode);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* File selection                                                      */
+  /* ------------------------------------------------------------------ */
+
+  function openFilePicker() {
+    if (state.busy || state.selecting || state.unavailable) return;
+    el.fileInput.value = '';
+    el.fileInput.click();
+  }
+
+  async function selectFile(file) {
+    if (!file || state.busy || state.selecting || state.unavailable) return;
+
+    if (file.size > V.constants.MAX_FILE_SIZE) {
+      showError('文件超过 1 TiB，当前封包格式无法处理。');
+      return;
+    }
+
+    state.selecting = true;
+    clearError();
+    clearFieldErrors();
+    updateAction();
+
+    var switched = false;
+
+    try {
+      var head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+      var isPackage = V.hasMagic(head);
+
+      if (isPackage) {
+        if (state.mode !== 'open') {
+          switchMode('open', { silent: true });
+          switched = true;
+        }
+
+        var info = await V.inspectBlob(file);
+        state.packageInfo = info;
+        state.file = file;
+        clearResult();
+        renderFileCard();
+        clearError();
+        announce('已载入封包：' + info.originalName);
+        if (switched) showToast('检测到 ByteVeil 封包，已切换到还原模式');
+        if (file.size > 512 * 1024 * 1024) showToast('文件较大，处理时请保持此页面打开');
+      } else {
+        if (state.mode === 'open') {
+          showError('这不是有效的 ByteVeil 封包。请选择由本工具生成、且未被改动的 .bveil 文件。');
+          return;
+        }
+        if (/\.bveil$/i.test(file.name || '')) {
+          showError('这个文件的扩展名是 .bveil，但封包标记已损坏。为避免重复加密，已拒绝载入。');
+          return;
+        }
+
+        state.packageInfo = null;
+        state.file = file;
+        clearResult();
+        renderFileCard();
+        clearError();
+        announce('已选择文件：' + (file.name || '未命名文件'));
+        if (file.size > 512 * 1024 * 1024) showToast('文件较大，处理时请保持此页面打开');
+      }
+    } catch (err) {
+      state.packageInfo = null;
+      if (switched) {
+        state.file = null;
+        el.fileCard.hidden = true;
+        el.dropzone.hidden = false;
+      }
+      showError(describeError(err, 'select'));
+    } finally {
+      state.selecting = false;
+      updateAction();
+    }
+  }
+
+  function removeFile() {
+    if (state.busy || state.selecting) return;
+    clearFileState();
+    clearResult();
+    clearError();
+    clearFieldErrors();
+    updateAction();
+    showToast('已移除文件');
+    el.dropzone.focus();
+  }
+
+  function clearFileState() {
+    state.file = null;
+    state.packageInfo = null;
+    el.fileInput.value = '';
+    el.fileCard.hidden = true;
+    el.dropzone.hidden = false;
+    el.fileName.textContent = '';
+    el.fileName.removeAttribute('title');
+    el.fileSize.textContent = '';
+    el.fileType.textContent = '';
+    el.fileExtra.hidden = true;
+    el.fileExtra.textContent = '';
+    el.fileExtra.removeAttribute('title');
+  }
+
+  function renderFileCard() {
+    var file = state.file;
+    if (!file) return;
+
+    var isPackage = state.mode === 'open' && state.packageInfo;
+    var name = file.name || '未命名文件';
+    el.fileName.textContent = name;
+    el.fileName.title = name;
+    el.fileSize.textContent = formatBytes(file.size);
+
+    if (isPackage) {
+      var info = state.packageInfo;
+      el.fileIcon.className = 'file-icon tone-archive';
+      el.fileExt.textContent = 'BVL';
+      el.fileType.textContent = 'ByteVeil 封包';
+
+      var extra = '原始：' + info.originalName + ' · ' + formatBytes(info.originalSize);
+      var date = formatDate(info.createdAt);
+      if (date) extra += ' · ' + date;
+      el.fileExtra.textContent = extra;
+      el.fileExtra.title = extra;
+      el.fileExtra.hidden = false;
+    } else {
+      var ext = getExtension(name);
+      var category = classifyFile(name, file.type);
+      var label = ext && /^[a-z0-9]{1,5}$/i.test(ext) ? ext.toUpperCase() : 'FILE';
+      var type = prettyFileType(file.type, ext);
+
+      el.fileIcon.className = 'file-icon tone-' + category;
+      el.fileExt.textContent = label;
+      el.fileType.textContent = type;
+      el.fileExtra.hidden = true;
+      el.fileExtra.textContent = '';
+      el.fileExtra.removeAttribute('title');
+    }
+
+    el.fileCard.hidden = false;
+    el.dropzone.hidden = true;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Key handling                                                        */
+  /* ------------------------------------------------------------------ */
+
+  function handleKeyInput() {
+    clearError();
+    setFieldError(el.keyInput, el.keyError, '');
+    refreshConfirmError();
+    updateStrength();
+    updateAction();
+  }
+
+  function handleConfirmInput() {
+    clearError();
+    setFieldError(el.confirmInput, el.confirmError, '');
+    refreshConfirmError();
+    updateAction();
+  }
+
+  function onSecretKeydown(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      requestAction();
+    }
+  }
+
+  function setReveal(reveal) {
+    state.reveal = !!reveal;
+    var type = state.reveal ? 'text' : 'password';
+    el.keyInput.type = type;
+    el.confirmInput.type = type;
+
+    [el.toggleKey, el.toggleConfirm].forEach(function (btn) {
+      btn.setAttribute('aria-pressed', state.reveal ? 'true' : 'false');
+      btn.setAttribute('aria-label', state.reveal ? '隐藏密钥' : '显示密钥');
+    });
+  }
+
+  function generateKey() {
+    if (state.busy || state.mode !== 'seal' || state.unavailable) return;
+    var key = V.randomKey(28);
+    el.keyInput.value = key;
+    el.confirmInput.value = key;
+    setReveal(true);
+    clearError();
+    clearFieldErrors();
+    updateStrength();
+    updateAction();
+    showToast('已生成 28 位随机密钥，请先保存好');
+    el.keyInput.focus();
+    el.keyInput.select();
+  }
+
+  async function copyKey() {
+    var key = el.keyInput.value;
+    if (!key) return;
+    var ok = await copyText(key);
+    showToast(ok ? '密钥已复制到剪贴板' : '复制失败，请手动选择密钥');
+  }
+
+  async function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (_) {
+        /* file:// often blocks the async clipboard API; fall through. */
+      }
+    }
+
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.className = 'visually-hidden';
+    area.setAttribute('readonly', '');
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+    var ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (_) {
+      ok = false;
+    }
+    area.remove();
+    return ok;
+  }
+
+  function updateStrength() {
+    var password = el.keyInput.value;
+    var measured = measurePassword(password);
+    el.strength.dataset.score = String(measured.score);
+    el.strengthText.textContent = measured.label;
+  }
+
+  function measurePassword(password) {
+    if (!password) return { score: 0, label: '尚未输入' };
+
+    var chars = Array.from(password);
+    var pool = 0;
+    if (/[a-z]/.test(password)) pool += 26;
+    if (/[A-Z]/.test(password)) pool += 26;
+    if (/[0-9]/.test(password)) pool += 10;
+    if (/[^A-Za-z0-9]/.test(password)) {
+      pool += /[^\x00-\x7f]/.test(password) ? 100 : 33;
+    }
+    if (pool === 0) pool = 1;
+
+    var unique = new Set(chars).size;
+    var effectiveLength = chars.length;
+    if (chars.length > 1) {
+      effectiveLength = chars.length * (0.62 + 0.38 * (unique / chars.length));
+    }
+
+    var entropy = effectiveLength * Math.log2(pool);
+    var score;
+    if (entropy >= 90) score = 4;
+    else if (entropy >= 65) score = 3;
+    else if (entropy >= 43) score = 2;
+    else score = 1;
+
+    if (chars.length < 8) score = 1;
+    else if (chars.length < 12) score = Math.min(score, 2);
+
+    var labels = { 1: '偏弱', 2: '一般', 3: '较强', 4: '很强' };
+    return { score: score, label: labels[score] || '偏弱' };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Validation and action                                               */
+  /* ------------------------------------------------------------------ */
+
+  function refreshConfirmError() {
+    if (state.mode !== 'seal') {
+      setFieldError(el.confirmInput, el.confirmError, '');
+      return;
+    }
+    var key = el.keyInput.value;
+    var confirm = el.confirmInput.value;
+    if (key && confirm && key !== confirm) {
+      setFieldError(el.confirmInput, el.confirmError, '两次输入的密钥不一致。');
+    } else {
+      setFieldError(el.confirmInput, el.confirmError, '');
+    }
+  }
+
+  function validateForm() {
+    clearFieldErrors();
+    var key = el.keyInput.value;
+
+    if (!state.file) {
+      showError('请先选择一个文件。');
+      el.dropzone.focus();
+      return false;
+    }
+
+    if (!key) {
+      setFieldError(el.keyInput, el.keyError, '请输入密钥。');
+      el.keyInput.focus();
+      return false;
+    }
+
+    if (state.mode === 'seal') {
+      if (!el.confirmInput.value) {
+        setFieldError(el.confirmInput, el.confirmError, '请再输入一次密钥。');
+        el.confirmInput.focus();
+        return false;
+      }
+      if (key !== el.confirmInput.value) {
+        setFieldError(el.confirmInput, el.confirmError, '两次输入的密钥不一致。');
+        el.confirmInput.focus();
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  async function requestAction() {
+    if (state.busy || state.selecting || state.unavailable) return;
+    if (state.result) {
+      showToast('请先清除上次结果，或更换文件后再处理');
+      return;
+    }
+    if (!validateForm()) return;
+
+    await performAction();
+  }
+
+  async function performAction() {
+    var operationMode = state.mode;
+    var file = state.file;
+    clearError();
+    clearFieldErrors();
+    state.busy = true;
+    state.abortController = new AbortController();
+
+    showProgress(operationMode);
+    updateAction();
+
+    await new Promise(function (resolve) {
+      window.requestAnimationFrame(function () { resolve(); });
+    });
+
+    try {
+      var operation = operationMode === 'seal' ? V.sealBlob : V.openBlob;
+      var result = await operation(file, el.keyInput.value, {
+        signal: state.abortController.signal,
+        onProgress: handleProgress
+      });
+
+      hideProgress();
+      showResult(result, operationMode);
+      announce(operationMode === 'seal' ? '封包完成，可以下载了' : '还原完成，可以下载了');
+    } catch (err) {
+      hideProgress();
+      if (err && err.code === 'ABORTED') {
+        showToast('已取消，没有生成文件');
+      } else {
+        showError(describeError(err, 'process'));
+      }
+    } finally {
+      state.busy = false;
+      state.abortController = null;
+      el.cancelBtn.disabled = false;
+      el.cancelBtn.textContent = '取消';
+      updateAction();
+    }
+  }
+
+  function updateAction() {
+    var key = el.keyInput.value;
+    var confirm = el.confirmInput.value;
+    var needsConfirm = state.mode === 'seal';
+    var formReady = key.length > 0 && (!needsConfirm || (confirm.length > 0 && confirm === key));
+    var canRun = !state.busy && !state.selecting && !state.unavailable && !state.result && !!state.file && formReady;
+
+    el.actionBtn.disabled = !canRun;
+    el.actionBtn.classList.toggle('is-busy', state.busy);
+    el.actionBtn.hidden = !!state.result;
+    el.actionNote.hidden = !!state.result;
+
+    if (state.busy) {
+      el.actionLabel.textContent = state.mode === 'seal' ? '正在封包…' : '正在还原…';
+    } else {
+      el.actionLabel.textContent = COPY[state.mode].action;
+    }
+
+    if (!canRun && !state.busy) {
+      if (!state.file) el.actionBtn.title = '请先选择文件';
+      else if (!key) el.actionBtn.title = '请输入密钥';
+      else if (needsConfirm && !confirm) el.actionBtn.title = '请再输入一次密钥';
+      else if (needsConfirm && confirm !== key) el.actionBtn.title = '两次输入的密钥不一致';
+      else el.actionBtn.title = '';
+    } else {
+      el.actionBtn.title = '';
+    }
+
+    el.modeBtns.forEach(function (btn) {
+      btn.disabled = state.busy || state.selecting;
+    });
+
+    el.changeFileBtn.disabled = state.busy || state.selecting;
+    el.removeFileBtn.disabled = state.busy || state.selecting;
+    el.keyInput.disabled = state.busy;
+    el.confirmInput.disabled = state.busy;
+    el.toggleKey.disabled = state.busy;
+    el.toggleConfirm.disabled = state.busy;
+    el.generateKeyBtn.disabled = state.busy || state.selecting || state.unavailable;
+    el.copyKeyBtn.disabled = state.busy || key.length === 0;
+    el.fileInput.disabled = state.busy || state.selecting;
+
+    var dropDisabled = state.busy || state.selecting || state.unavailable;
+    el.dropzone.classList.toggle('is-disabled', dropDisabled);
+    el.dropzone.setAttribute('aria-disabled', dropDisabled ? 'true' : 'false');
+    el.dropzone.tabIndex = dropDisabled ? -1 : 0;
+
+    if (!state.result) {
+      el.actionNote.hidden = false;
+    }
+  }
+
+  function setFieldError(input, errorEl, message) {
+    errorEl.textContent = message || '';
+    errorEl.hidden = !message;
+    var wrap = input.closest('.input-wrap');
+    if (wrap) wrap.classList.toggle('is-invalid', !!message);
+    if (message) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  }
+
+  function clearFieldErrors() {
+    setFieldError(el.keyInput, el.keyError, '');
+    setFieldError(el.confirmInput, el.confirmError, '');
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Progress                                                            */
+  /* ------------------------------------------------------------------ */
+
+  function showProgress(mode) {
+    el.progressPanel.hidden = false;
+    el.progressPanel.classList.add('is-indeterminate');
+    el.progressBar.style.width = '0%';
+    el.progressPct.textContent = '···';
+    el.progressLabel.textContent = mode === 'seal' ? '正在准备加密…' : '正在读取封包…';
+    el.progressDetail.textContent = '文件不会离开这台设备';
+    el.progressTrack.setAttribute('aria-valuenow', '0');
+    el.progressTrack.removeAttribute('aria-valuetext');
+    el.cancelBtn.disabled = false;
+    el.cancelBtn.textContent = '取消';
+  }
+
+  function handleProgress(event) {
+    if (!event || !state.busy) return;
+
+    if (event.phase === 'derive') {
+      el.progressPanel.classList.add('is-indeterminate');
+      el.progressLabel.textContent = '正在从密钥派生加密钥匙…';
+      el.progressPct.textContent = 'PBKDF2';
+      el.progressDetail.textContent = '310,000 次迭代 · 只在本机计算';
+      el.progressTrack.removeAttribute('aria-valuenow');
+      el.progressTrack.setAttribute('aria-valuetext', '正在派生密钥');
+      return;
+    }
+
+    var pct = Math.max(0, Math.min(100, Math.round((event.progress || 0) * 100)));
+    el.progressPanel.classList.remove('is-indeterminate');
+    el.progressBar.style.width = pct + '%';
+    el.progressPct.textContent = pct + '%';
+    el.progressTrack.setAttribute('aria-valuenow', String(pct));
+    el.progressTrack.removeAttribute('aria-valuetext');
+
+    if (event.phase === 'done') {
+      el.progressLabel.textContent = state.mode === 'seal' ? '封包完成' : '还原完成';
+      el.progressDetail.textContent = '正在生成下载文件…';
+      return;
+    }
+
+    var verb = state.mode === 'seal' ? '打乱' : '还原';
+    if (!event.done) {
+      el.progressLabel.textContent = '正在准备分块…';
+    } else {
+      el.progressLabel.textContent = '正在' + verb + '分块 ' + event.done + ' / ' + event.total + '…';
+    }
+    el.progressDetail.textContent = formatBytes(state.file ? state.file.size : 0) + ' · AES-256-GCM';
+  }
+
+  function hideProgress() {
+    el.progressPanel.hidden = true;
+    el.progressPanel.classList.remove('is-indeterminate');
+    el.progressBar.style.width = '0%';
+    el.progressPct.textContent = '0%';
+    el.progressTrack.setAttribute('aria-valuenow', '0');
+    el.cancelBtn.disabled = false;
+    el.cancelBtn.textContent = '取消';
+  }
+
+  function cancelOperation() {
+    if (!state.abortController) return;
+    el.cancelBtn.disabled = true;
+    el.cancelBtn.textContent = '正在取消…';
+    state.abortController.abort();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Result                                                              */
+  /* ------------------------------------------------------------------ */
+
+  function showResult(result, mode) {
+    clearResult();
+
+    var displayName = safeDownloadName(result.filename);
+    state.result = {
+      blob: result.blob,
+      filename: result.filename,
+      displayName: displayName,
+      info: result.info,
+      mode: mode
+    };
+    state.resultUrl = URL.createObjectURL(result.blob);
+
+    el.resultEyebrow.textContent = mode === 'seal' ? '封包完成' : '还原完成';
+    el.resultName.textContent = displayName;
+    el.resultName.title = displayName;
+
+    if (mode === 'seal') {
+      el.resultMeta.textContent =
+        formatBytes(result.info.originalSize) + ' → ' + formatBytes(result.blob.size) +
+        ' · ' + result.info.totalChunks + ' 个分块 · AES-256-GCM';
+      el.resultNote.textContent = '请先单独保存密钥。丢失密钥后，这个封包没有找回方式。';
+      el.downloadLabel.textContent = '下载乱码封包';
+    } else {
+      el.resultMeta.textContent =
+        formatBytes(result.blob.size) + ' · 完整性认证通过 · ' + result.info.totalChunks + ' 个分块';
+      el.resultNote.textContent = '文件名、大小和内容均已恢复。整个过程没有请求任何服务器。';
+      el.downloadLabel.textContent = '下载还原文件';
+    }
+
+    el.resultCard.hidden = false;
+    updateAction();
+
+    window.requestAnimationFrame(function () {
+      el.resultCard.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'nearest' });
+    });
+  }
+
+  function clearResult() {
+    if (state.resultUrl) {
+      URL.revokeObjectURL(state.resultUrl);
+      state.resultUrl = null;
+    }
+    state.result = null;
+    el.resultCard.hidden = true;
+    el.resultEyebrow.textContent = '';
+    el.resultName.textContent = '';
+    el.resultMeta.textContent = '';
+    el.resultNote.textContent = '';
+  }
+
+  function downloadResult() {
+    if (!state.result || !state.resultUrl) return;
+    var anchor = document.createElement('a');
+    anchor.href = state.resultUrl;
+    anchor.download = safeDownloadName(state.result.displayName);
+    anchor.rel = 'noopener';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    showToast('已开始下载');
+  }
+
+  function safeDownloadName(name) {
+    var safe = String(name || 'download.bin')
+      .normalize('NFC')
+      .replace(/[\u0000-\u001f\u007f<>:"/\\|?*]/g, '_')
+      .replace(/[. ]+$/g, '')
+      .trim();
+
+    if (!safe) safe = 'download.bin';
+    if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(safe)) safe = '_' + safe;
+
+    if (safe.length > 200) {
+      var dot = safe.lastIndexOf('.');
+      var ext = dot > 0 && safe.length - dot <= 17 ? safe.slice(dot) : '';
+      safe = safe.slice(0, 200 - ext.length) + ext;
+    }
+    return safe;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Errors, toast, drag                                                */
+  /* ------------------------------------------------------------------ */
+
+  function showError(message, options) {
+    options = options || {};
+    el.errorText.textContent = message;
+    el.errorBanner.hidden = false;
+    announce(message);
+    if (options.scroll !== false) {
+      window.requestAnimationFrame(function () {
+        el.errorBanner.scrollIntoView({
+          behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+          block: 'nearest'
+        });
+      });
+    }
+  }
+
+  function clearError() {
+    if (el.errorBanner.hidden) return;
+    el.errorBanner.hidden = true;
+    el.errorText.textContent = '';
+  }
+
+  function describeError(err, context) {
+    var code = err && err.code;
+    if (code === 'WRONG_KEY') return '密钥不正确，或封包已经损坏。请检查密钥后重试。';
+    if (code === 'UNSUPPORTED_VERSION') return '这个封包由更新版本的 ByteVeil 生成，当前版本无法打开。';
+    if (code === 'UNSUPPORTED_FORMAT') return '封包使用了不受支持的加密参数。';
+    if (code === 'INVALID_FORMAT') {
+      if (context === 'select') return '无法读取这个封包：文件头、大小或分块结构不完整，可能已损坏或被修改。';
+      return '封包结构异常或已损坏，无法还原。';
+    }
+    if (code === 'CRYPTO_UNAVAILABLE') return '当前浏览器不支持所需的加密能力。请换用较新的浏览器并以本地文件方式打开。';
+    if (code === 'FILE_TOO_LARGE') return '文件超过 1 TiB，当前封包格式无法处理。';
+    if (code === 'DATA_CHANGED') return '读取过程中文件发生了变化，请重新选择文件。';
+    if (code === 'PASSWORD_REQUIRED') return '请输入密钥。';
+    if (code === 'PASSWORD_TOO_LONG') return '密钥过长，请控制在 1024 个字符以内。';
+    if (code === 'ABORTED') return '操作已取消。';
+    if (code === 'ENCRYPT_FAILED') return '加密失败，请重试。如果问题持续出现，请换一个较小的文件。';
+
+    console.error(err);
+    if (err && (err.name === 'QuotaExceededError' || err.name === 'RangeError')) {
+      return '浏览器内存不足。请关闭其他标签页，或换一个较小的文件后重试。';
+    }
+    return '处理失败，请重试。如果文件较大，请关闭其他标签页以释放内存。';
+  }
+
+  function showToast(message) {
+    window.clearTimeout(state.toastTimer);
+    el.toast.textContent = message;
+    el.toast.classList.add('is-visible');
+    state.toastTimer = window.setTimeout(function () {
+      el.toast.classList.remove('is-visible');
+    }, 2600);
+  }
+
+  function announce(message) {
+    el.srStatus.textContent = '';
+    window.setTimeout(function () {
+      el.srStatus.textContent = message;
+    }, 30);
+  }
+
+  function isFileDrag(event) {
+    var types = event.dataTransfer && event.dataTransfer.types;
+    if (!types) return false;
+    return Array.prototype.indexOf.call(types, 'Files') !== -1;
+  }
+
+  function onDragEnter(event) {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    state.dragDepth += 1;
+    document.body.classList.add('is-dragging');
+  }
+
+  function onDragOver(event) {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = state.busy ? 'none' : 'copy';
+  }
+
+  function onDragLeave(event) {
+    if (state.dragDepth === 0) return;
+    state.dragDepth = Math.max(0, state.dragDepth - 1);
+    if (state.dragDepth === 0) document.body.classList.remove('is-dragging');
+  }
+
+  function onDrop(event) {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    resetDrag();
+
+    if (state.busy || state.selecting) {
+      showToast('正在处理，请稍后再选择文件');
+      return;
+    }
+    if (state.unavailable) return;
+
+    var files = event.dataTransfer && event.dataTransfer.files;
+    if (!files || !files.length) return;
+    if (files.length > 1) showToast('一次处理一个文件，已选择第一个');
+    selectFile(files[0]);
+  }
+
+  function resetDrag() {
+    state.dragDepth = 0;
+    document.body.classList.remove('is-dragging');
+  }
+
+  function onBeforeUnload(event) {
+    if (state.busy) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Small helpers                                                       */
+  /* ------------------------------------------------------------------ */
+
+  function getExtension(name) {
+    var base = String(name || '').replace(/^.*[\\/]/, '');
+    var dot = base.lastIndexOf('.');
+    if (dot <= 0 || dot === base.length - 1) return '';
+    return base.slice(dot + 1);
+  }
+
+  function classifyFile(name, mime) {
+    var ext = getExtension(name).toLowerCase();
+    var type = String(mime || '').toLowerCase();
+
+    if (type.indexOf('image/') === 0 || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'heic', 'avif', 'tif', 'tiff', 'ico'].indexOf(ext) !== -1) return 'image';
+    if (type.indexOf('video/') === 0 || type.indexOf('audio/') === 0 || ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'mp4', 'mov', 'mkv', 'webm', 'avi', 'wmv'].indexOf(ext) !== -1) return 'media';
+    if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'zst', 'tgz', 'bveil'].indexOf(ext) !== -1) return 'archive';
+    if (['js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'html', 'htm', 'css', 'scss', 'json', 'py', 'java', 'c', 'h', 'cpp', 'hpp', 'go', 'rs', 'rb', 'php', 'sh', 'bash', 'ps1', 'yml', 'yaml', 'xml', 'sql', 'toml', 'ini', 'conf'].indexOf(ext) !== -1) return 'code';
+    if (type.indexOf('text/') === 0 || ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'rtf', 'csv', 'epub', 'pages', 'numbers', 'key'].indexOf(ext) !== -1) return 'doc';
+    return 'other';
+  }
+
+  function prettyFileType(mime, ext) {
+    var type = String(mime || '').split(';')[0].trim();
+    if (!type && ext) type = ext.toUpperCase() + ' 文件';
+    if (!type) type = '二进制文件';
+    if (type.length > 30) type = type.slice(0, 29) + '…';
+    return type;
+  }
+
+  function formatBytes(value) {
+    var bytes = Number(value);
+    if (!Number.isFinite(bytes) || bytes < 0) return '—';
+    if (bytes < 1024) return Math.round(bytes) + ' B';
+
+    var units = ['KB', 'MB', 'GB', 'TB'];
+    var index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length);
+    var number = bytes / Math.pow(1024, index);
+    var digits = number >= 100 ? 0 : number >= 10 ? 1 : 2;
+    return number.toFixed(digits).replace(/\.0+$/, '') + ' ' + units[index - 1];
+  }
+
+  function formatDate(timestamp) {
+    if (!timestamp) return '';
+    try {
+      return new Intl.DateTimeFormat('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(new Date(timestamp));
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+})();
+
+</script>
+</body>
+</html>
